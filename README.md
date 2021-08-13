@@ -82,6 +82,7 @@ services:
 - `dhaf --run <config_file>` - start dhaf cluster node using configuration file <config_file>;
 - `dhaf --status` - find out dhaf cluster status;
 - `dhaf --switchover master|replica` - manually switch to master or replica.
+- `dhaf --help` - show help.
 
 # Configuration file
 Major part:
