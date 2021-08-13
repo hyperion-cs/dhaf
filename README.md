@@ -35,14 +35,14 @@ In addition, the following can be noted:
 The following is recommended for stable operation of this solution:
 1. Two servers of your entry point (master, replica) in independent data centers. This can be both load balancers (such as haproxy) and directly your services;
 2. Three watchdog servers in independent datacenters. These can be the **cheapest** virtual servers (including cloud servers), because the load on them is minimal. The following should be installed on them:
-    2.1. **dhaf** as a monitoring system and fast Cloudflare DNS switching if necessary;
-    2.2. **[etcd](https://github.com/etcd-io/etcd)** >= v3.5 as DCS (Distributed Configuration Store).
+    - **dhaf** (current project);
+    - **[etcd](https://github.com/etcd-io/etcd)** >= v3.5 as DCS (Distributed Configuration Store).
 
 # Getting started
 Below is a simple example of how to make dhaf work.
 1. Suppose you have two similar servers in different data centers, which both provide your web-service. They have the following IP addresses: 111.111.111.11 (master) and 222.222.222.222 (replica);
 1. Let us also assume that you have prepared three observer servers in different datacenters. They have the following IP addresses: 111.1.1.1, 112.2.2.2, 113.3.3.3;
-1. Install etcd on all the watchdog servers (if you have not already done so). See details [https://etcd.io/docs/v3.5/quickstart/](here) and [https://etcd.io/docs/v3.5/op-guide/clustering/](here).
+1. Install etcd on all the watchdog servers (if you have not already done so). See details [here](https://etcd.io/docs/v3.5/quickstart/) and [here](https://etcd.io/docs/v3.5/op-guide/clustering/).
 1. Create a Cloudflare account with a free plan (this will be enough). Transfer there DNS management for your domain name.
 1. Create a configuration file config.dhaf, which has the following contents:
 ```yaml
