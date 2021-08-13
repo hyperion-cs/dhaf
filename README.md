@@ -1,5 +1,5 @@
 # Dhaf
-Cloudflare DNS / Distributed high availability failover
+Cloudflare DNS / Distributed high availability failover, written in cross-platform C# [.NET](https://github.com/dotnet) (Linux, Windows and macOS supported).
 
 # Why is it useful? 🚀
 Cloudflare [guarantees](https://www.cloudflare.com/dns/) the following for **free**:
@@ -12,7 +12,9 @@ Also a bonus are important security features: protection from DDoS and hiding th
 This solution is perfect for small and medium-sized projects that are not ready to spend huge resources (including financial) to maintain high availability of their services. If you want to provide HA fast and simple then this solution is for you.
 
 # Why not use Cloudflare's built-in load balancer?
-Your right, not a bad option. However, first of all, this feature is not available for the free Cloudflare plan :)
+Your right, not a bad option. Given that this load balancer can also be used for transparent failover of your servers.
+However, first of all, this feature is not available for the free Cloudflare plan :)
+
 In addition, the following can be noted:
 1. Even if you buy Cloudflare load balancer, you have to pay extra to use the checker logic flexibly and without restrictions (and something is available only for enterprise plan);
 2. You don't fully control where your services availability checking comes from;
@@ -24,7 +26,7 @@ In addition, the following can be noted:
 
 # What features does dhaf have?
 - Failover (dhaf will automatically and transparently switch your servers to end clients if necessary);
-- Switchover (manually switching your servers) - useful for debugging and performing server maintenance invisibly to the end client;
+- Switchover (manually switching your servers) — useful for debugging and performing server maintenance invisibly to the end client;
 - Support multiple services at once (which may "located" in subdomains of your domain name, for example);
 - Email/telegram notifications about the health of your services or dhaf cluster;
 - Flexible customization of the health checks of your service;
@@ -38,13 +40,14 @@ The following is recommended for stable operation of this solution:
     - **dhaf** (current project);
     - **[etcd](https://github.com/etcd-io/etcd)** >= v3.5 as DCS (Distributed Configuration Store).
 
-# Getting started
+# Quick Start
 Below is a simple example of how to make dhaf work.
 1. Suppose you have two similar servers in different data centers, which both provide your web-service. They have the following IP addresses: 111.111.111.11 (master) and 222.222.222.222 (replica);
 1. Let us also assume that you have prepared three observer servers in different datacenters. They have the following IP addresses: 111.1.1.1, 112.2.2.2, 113.3.3.3;
-1. Install etcd on all the watchdog servers (if you have not already done so). See details [here](https://etcd.io/docs/v3.5/quickstart/) and [here](https://etcd.io/docs/v3.5/op-guide/clustering/).
-1. Create a Cloudflare account with a free plan (this will be enough). Transfer there DNS management for your domain name.
-1. Create a configuration file config.dhaf, which has the following contents:
+1. Install and start etcd on all the watchdog servers (if you have not already done so). See details [here](https://etcd.io/docs/v3.5/quickstart/) and [here](https://etcd.io/docs/v3.5/op-guide/clustering/);
+1. Install dhaf (requires .NET >= 5.0) from sources;
+3. Create a Cloudflare account with a free plan (this will be enough). Transfer there DNS management for your domain name;
+4. Create a configuration file config.dhaf, which has the following contents:
 ```yaml
 cloudflare-api-token: <token>
 
@@ -64,7 +67,7 @@ services:
     health-check:
       type: https
 ```
-1. As you can see from the value of the "dhaf-node-name" parameter of the configuration file above, it is intended for the first server (hereinafter referred to as nodes). Create two more of these, replacing the value of the parameter "dhaf-node-name" with node2 and node3 respectively.
+1. As you can see from the value of the "dhaf-node-name" parameter of the configuration file above, it is intended for the first server (hereinafter referred to as nodes). Create two more of these, replacing the value of the parameter "dhaf-node-name" with node2 and node3 respectively;
 1. The only thing left to do is to run dhaf on all watchdog servers:
 ```shell
 ./dhaf --run config.dhaf
