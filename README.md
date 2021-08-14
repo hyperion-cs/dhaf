@@ -104,13 +104,14 @@ Major part:
 
 The following optional parameters are also available in `services.<name>.health-check` when using http(s) checkers:
 |Parameter name|Type|Description|Default|
-| - | :-: | - | - |
-| `method` | string | HTTP method that the checker uses. Now `GET` and `POST` are available. | GET |
-| `port` | int | The port to health check against. | 80 (http), 443 (https) |
-| `path` | string | The endpoint path to health check against. | / |
-| `headers` | dict | Http headers in key-value format. | Not set |
-| `interval` | int | How often the checker should perform checks (in seconds). It is counted after the completion of the last check. Must be in the range 1-3600 seconds. | 30 |
-| `timeout` | int | Timeout (in seconds) for connecting to the host to be checked. Must be in the range 1-86400 seconds. | 5 |
-| `retries` | int | The number of retries to attempt in case of a timeout before marking the origin as unhealthy. Retries are attempted immediately. | 2 |
-| `expected-codes` | string | The expected HTTP response code or code range of the health check in the format `111,222,3XX`. It is allowed to use X as a wildcard (e.g.: 2XX). Must indicate valid HTTP response code(s). | 200 |
-| `expected-response-body` | string | A case insensitive sub-string to look for in the response body. If this string is not found, the server will be marked as unhealthy. | Not set |
+| - | :-: | - | :-: |
+| `method` | string | HTTP method that the checker uses. Now `GET` and `POST` are available. | `GET` |
+| `port` | int | The port to health check against. | `80` (http), `443` (https) |
+| `path` | string | The endpoint path to health check against. | `/` |
+| `headers` | dict | Http headers in key-value format. | — |
+| `follow-redirects` | bool | Is it necessary to follow redirects? | `false` |
+| `interval` | int | How often the checker should perform checks (in seconds). It is counted after the completion of the last check. Must be in the range 1-3600 seconds. | `30` |
+| `timeout` | int | Timeout (in seconds) for connecting to the host to be checked. Must be in the range 1-86400 seconds. | `5` |
+| `retries` | int | The number of retries to attempt in case of a timeout before marking the origin as unhealthy. Retries are attempted immediately. | `2` |
+| `expected-codes` | string | The expected HTTP response code or code range of the health check in the format `111,222,3XX`. It is allowed to use X as a wildcard (e.g.: 2XX). Must indicate valid HTTP response code(s). | `200` |
+| `expected-response-body` | string | A case insensitive sub-string to look for in the response body. If this string is not found, the server will be marked as unhealthy. | — |
