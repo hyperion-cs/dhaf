@@ -3,9 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.31005.135
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dhaf.Core", "Dhaf.Core\Dhaf.Core.csproj", "{8567AF9C-6406-431F-9C1D-74460B9CBC4A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.Core", "Dhaf.Core\Dhaf.Core.csproj", "{8567AF9C-6406-431F-9C1D-74460B9CBC4A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dhaf.HealthCheck", "Dhaf.HealthCheck\Dhaf.HealthCheck.csproj", "{1F35D1A0-CC61-4057-8C5F-36E13ABECBD6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.HealthCheckers", "Dhaf.HealthCheckers\Dhaf.HealthCheckers.csproj", "{37A3127F-E220-4CEE-83A6-7BBA856CD03E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.CloudflareSwitch", "Dhaf.CloudflareSwitch\Dhaf.CloudflareSwitch.csproj", "{53A14176-6048-4CD6-B13E-C46AE119FE7B}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.CLI", "Dhaf.CLI\Dhaf.CLI.csproj", "{BE053C9E-8668-4746-A283-02CA32EE552E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +21,18 @@ Global
 		{8567AF9C-6406-431F-9C1D-74460B9CBC4A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8567AF9C-6406-431F-9C1D-74460B9CBC4A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8567AF9C-6406-431F-9C1D-74460B9CBC4A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1F35D1A0-CC61-4057-8C5F-36E13ABECBD6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1F35D1A0-CC61-4057-8C5F-36E13ABECBD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1F35D1A0-CC61-4057-8C5F-36E13ABECBD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1F35D1A0-CC61-4057-8C5F-36E13ABECBD6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{37A3127F-E220-4CEE-83A6-7BBA856CD03E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{37A3127F-E220-4CEE-83A6-7BBA856CD03E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{37A3127F-E220-4CEE-83A6-7BBA856CD03E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{37A3127F-E220-4CEE-83A6-7BBA856CD03E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{53A14176-6048-4CD6-B13E-C46AE119FE7B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{53A14176-6048-4CD6-B13E-C46AE119FE7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{53A14176-6048-4CD6-B13E-C46AE119FE7B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{53A14176-6048-4CD6-B13E-C46AE119FE7B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE053C9E-8668-4746-A283-02CA32EE552E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE053C9E-8668-4746-A283-02CA32EE552E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE053C9E-8668-4746-A283-02CA32EE552E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE053C9E-8668-4746-A283-02CA32EE552E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

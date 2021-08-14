@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace Dhaf.HealthCheck
+namespace Dhaf.CLI
 {
     class Program
     {
         static async Task Main(string[] args)
         {
-            Console.WriteLine("Dhaf.HealthCheck project.");
+            Console.WriteLine("Done.");
         }
     }
 }
