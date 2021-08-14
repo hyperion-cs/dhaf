@@ -106,8 +106,9 @@ The following optional parameters are also available when using http(s) checkers
 | `services.<name>.health-check.method` | string | HTTP method that the checker uses. Now `GET` and `POST` are available. | GET |
 | `services.<name>.health-check.port` | int | The port to health check against. | 80 (http), 443 (https) |
 | `services.<name>.health-check.path` | string | The endpoint path to health check against. | / |
+| `services.<name>.health-check.headers` | dict | Dictionary of http headers in key-value format. | Not set |
 | `services.<name>.health-check.interval` | int | How often the checker should perform checks (in seconds). It is counted after the completion of the last check. Must be in the range 1-3600 seconds. | 30 |
 | `services.<name>.health-check.timeout` | int | Timeout (in seconds) for connecting to the host to be checked. Must be in the range 1-86400 seconds. | 5 |
 | `services.<name>.health-check.retries` | int | The number of retries to attempt in case of a timeout before marking the origin as unhealthy. Retries are attempted immediately. | 2 |
 | `services.<name>.health-check.expected-codes` | string | The expected HTTP response code or code range of the health check. It is allowed to use X as a wildcard (e.g.: 2XX). Must indicate valid HTTP response code(s). | 200 |
-| `services.<name>.health-check.response-body` | string | A case insensitive sub-string to look for in the response body. If this string is not found, the server will be marked as unhealthy. | Not set |
+| `services.<name>.health-check.expected-response-body` | string | A case insensitive sub-string to look for in the response body. If this string is not found, the server will be marked as unhealthy. | Not set |
