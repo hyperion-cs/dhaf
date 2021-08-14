@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31005.135
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dhaf.Core", "Dhaf.Core\Dhaf.Core.csproj", "{8567AF9C-6406-431F-9C1D-74460B9CBC4A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dhaf.HealthCheck", "Dhaf.HealthCheck\Dhaf.HealthCheck.csproj", "{1F35D1A0-CC61-4057-8C5F-36E13ABECBD6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8567AF9C-6406-431F-9C1D-74460B9CBC4A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8567AF9C-6406-431F-9C1D-74460B9CBC4A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8567AF9C-6406-431F-9C1D-74460B9CBC4A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8567AF9C-6406-431F-9C1D-74460B9CBC4A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1F35D1A0-CC61-4057-8C5F-36E13ABECBD6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1F35D1A0-CC61-4057-8C5F-36E13ABECBD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1F35D1A0-CC61-4057-8C5F-36E13ABECBD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1F35D1A0-CC61-4057-8C5F-36E13ABECBD6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CB278208-B774-42D8-AD9A-33944C91F157}
+	EndGlobalSection
+EndGlobal
