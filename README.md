@@ -46,7 +46,7 @@ Below is a simple example of how to make dhaf work.
 2. Let us also assume that you have prepared three observer servers in different datacenters. They have the following IP addresses: 111.1.1.1, 112.2.2.2, 113.3.3.3;
 3. Install and start etcd on all the watchdog servers (if you have not already done so). See details [here](https://etcd.io/docs/v3.5/quickstart/) and [here](https://etcd.io/docs/v3.5/op-guide/clustering/);
 4. Install dhaf (requires .NET >= 5.0) from sources;
-5. Create a Cloudflare account with a free plan (this will be enough). Transfer there DNS management for your domain name;
+5. Create a Cloudflare account with a free plan (this will be enough). Transfer there DNS management for your domain name `foo.com`;
 6. Create a configuration file `config.dhaf`, which has the following contents:
 ```yaml
 cloudflare-api-token: <token>
