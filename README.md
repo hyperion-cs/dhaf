@@ -47,9 +47,9 @@ Below is a simple example of how to make dhaf work.
 3. Install and start etcd on all the watchdog servers (if you have not already done so). See details [here](https://etcd.io/docs/v3.5/quickstart/) and [here](https://etcd.io/docs/v3.5/op-guide/clustering/);
 4. Install dhaf (requires .NET >= 5.0) from sources;
 5. Create a Cloudflare account with a free plan (this will be enough). Transfer there DNS management for your domain name `foo.com`;
-    - Warning! To combat scammers, Cloudflare does not allow DNS configuration via the official API for domains with a .cf, .ga, .gq, .ml, or .tk TLD (top-level domain). Thus, it is not possible to work with them in **dhaf** either. However, it is still possible to manually configure them in Cloudflare Dashboard.
+    - ⚠️ Warning! To combat scammers, Cloudflare does not allow DNS configuration via the official API for domains with a .cf, .ga, .gq, .ml, or .tk TLD (top-level domain). Thus, it is not possible to work with them in **dhaf** either. However, it is still possible to manually configure them in Cloudflare Dashboard.
 6. Using the Clouflare dashboard, [create](https://dash.cloudflare.com/profile/api-tokens) an API token (if you have not already done so) with access to edit the DNS records of your domain zone. You also need to set an adequate TTL (lifetime) of your token, and keep it up to date.
-7. Create a configuration file `config.dhaf`, which has the following contents:
+7. For the **first** watchdog server, сreate a configuration file `config-n1.dhaf`, which has the following contents:
 ```yaml
 cloudflare-api-token: <token>
 
@@ -69,14 +69,14 @@ services:
     health-check:
       type: https
 ```
-8. As you can see from the value of the `dhaf-node-name` parameter of the configuration file above, it is intended for the first server (hereinafter referred to as nodes). Create two more of these, replacing the value of the parameter `dhaf-node-name` with `dhaf-node2` and `dhaf-node3` respectively;
-9. The only thing left to do is to run dhaf on all watchdog servers:
+8. As you can see from the value of the `dhaf-node-name` parameter of the configuration file above, it is intended for the first server (hereinafter referred to as nodes). Create two more of these, replacing the value of the parameter `dhaf-node-name` with `dhaf-node2` and `dhaf-node3` respectively (as well as the name of the config so as not to get confused.);
+9. The only thing left to do is to run dhaf on all watchdog servers (don't forget to substitute the appropriate configuration file):
 ```shell
-dhaf run --config config.dhaf
+dhaf run --config config-n1.dhaf
 ```
 10. After the dhaf cluster is fully initialized, you can see its status:
 ```shell
-dhaf status --config config.dhaf
+dhaf status --config config-n1.dhaf
 ```
 11. Congratulations! Everything works. And now you can sleep well or test failures of your servers as an experiment.
 
