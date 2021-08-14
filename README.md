@@ -110,5 +110,5 @@ The following optional parameters are also available in `services.<name>.health-
 | `interval` | int | How often the checker should perform checks (in seconds). It is counted after the completion of the last check. Must be in the range 1-3600 seconds. | 30 |
 | `timeout` | int | Timeout (in seconds) for connecting to the host to be checked. Must be in the range 1-86400 seconds. | 5 |
 | `retries` | int | The number of retries to attempt in case of a timeout before marking the origin as unhealthy. Retries are attempted immediately. | 2 |
-| `expected-codes` | string | The expected HTTP response code or code range of the health check. It is allowed to use X as a wildcard (e.g.: 2XX). Must indicate valid HTTP response code(s). | 200 |
+| `expected-codes` | string | The expected HTTP response code or code range of the health check in the format `111,222,3XX`. It is allowed to use X as a wildcard (e.g.: 2XX). Must indicate valid HTTP response code(s). | 200 |
 | `expected-response-body` | string | A case insensitive sub-string to look for in the response body. If this string is not found, the server will be marked as unhealthy. | Not set |
