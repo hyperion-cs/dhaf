@@ -43,11 +43,11 @@ The following is recommended for stable operation of this solution:
 # Quick Start
 Below is a simple example of how to make dhaf work.
 1. Suppose you have two similar servers in different data centers, which both provide your web-service. They have the following IP addresses: 111.111.111.11 (master) and 222.222.222.222 (replica);
-1. Let us also assume that you have prepared three observer servers in different datacenters. They have the following IP addresses: 111.1.1.1, 112.2.2.2, 113.3.3.3;
-1. Install and start etcd on all the watchdog servers (if you have not already done so). See details [here](https://etcd.io/docs/v3.5/quickstart/) and [here](https://etcd.io/docs/v3.5/op-guide/clustering/);
-1. Install dhaf (requires .NET >= 5.0) from sources;
-3. Create a Cloudflare account with a free plan (this will be enough). Transfer there DNS management for your domain name;
-4. Create a configuration file config.dhaf, which has the following contents:
+2. Let us also assume that you have prepared three observer servers in different datacenters. They have the following IP addresses: 111.1.1.1, 112.2.2.2, 113.3.3.3;
+3. Install and start etcd on all the watchdog servers (if you have not already done so). See details [here](https://etcd.io/docs/v3.5/quickstart/) and [here](https://etcd.io/docs/v3.5/op-guide/clustering/);
+4. Install dhaf (requires .NET >= 5.0) from sources;
+5. Create a Cloudflare account with a free plan (this will be enough). Transfer there DNS management for your domain name;
+6. Create a configuration file `config.dhaf`, which has the following contents:
 ```yaml
 cloudflare-api-token: <token>
 
@@ -67,22 +67,22 @@ services:
     health-check:
       type: https
 ```
-1. As you can see from the value of the "dhaf-node-name" parameter of the configuration file above, it is intended for the first server (hereinafter referred to as nodes). Create two more of these, replacing the value of the parameter "dhaf-node-name" with node2 and node3 respectively;
-1. The only thing left to do is to run dhaf on all watchdog servers:
+7. As you can see from the value of the `dhaf-node-name` parameter of the configuration file above, it is intended for the first server (hereinafter referred to as nodes). Create two more of these, replacing the value of the parameter `dhaf-node-name` with `dhaf-node2` and `dhaf-node3` respectively;
+8. The only thing left to do is to run dhaf on all watchdog servers:
 ```shell
-./dhaf --run config.dhaf
+dhaf run --config config.dhaf
 ```
-1. After the dhaf cluster is fully initialized, you can see its status:
+9. After the dhaf cluster is fully initialized, you can see its status:
 ```shell
-./dhaf --status
+dhaf status --config config.dhaf
 ```
-1. Congratulations! Everything works. And now you can sleep well or test failures of your servers as an experiment.
+10. Congratulations! Everything works. And now you can sleep well or test failures of your servers as an experiment.
 
 # Available commands:
-- `dhaf run --config <config_file>` - start dhaf cluster node using configuration file <config_file>;
-- `dhaf status --config <config_file>` - find out dhaf cluster status using configuration file <config_file>;
-- `dhaf switchover --config <config_file> --to master|replica` - manually switch to master or replice using configuration file <config_file>;
-- `dhaf help <command>` - show help for the <command> comand.
+- `dhaf run --config <config_file>` - start dhaf cluster node using configuration file `<config_file>`;
+- `dhaf status --config <config_file>` - find out dhaf cluster status using configuration file `<config_file>`;
+- `dhaf switchover --config <config_file> --to master|replica` - manually switch to master or replice using configuration file `<config_file>`;
+- `dhaf help <command>` - show help for the `<command>` comand.
 - `dhaf --help` - show help.
 - `dhaf --version` - show dhaf version.
 
