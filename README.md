@@ -91,8 +91,8 @@ Major part:
 |Parameter name|Type|Description|
 | - | :-: | - |
 | `cloudflare-api-token` | string | Your API access token for Cloudflare.|
-| `init.dhaf-cluster-name` | string | Dhaf cluster-name. The characters a-zA-Z0-9 and - (hyphen) are allowed. |
-| `init.dhaf-node-name` | string | The name of the current dhaf cluster node. The characters a-zA-Z0-9 and - (hyphen) are allowed. |
+| `init.dhaf-cluster-name` | string | Dhaf cluster-name. The characters `a-zA-Z0-9` and `-` (hyphen) are allowed. |
+| `init.dhaf-node-name` | string | The name of the current dhaf cluster node. The characters `a-zA-Z0-9` and `-` (hyphen) are allowed. |
 | `etcd.hosts` | string | Etcd hosts in the format `ip1:port1,ip2:port2,...,ipN:portN`. |
 | `services.<name>`| key | Server configuration `<name>`.|
 | `services.<name>.domain` | string | Domain name for service <name>. For example, `site.com`. |
