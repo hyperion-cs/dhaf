@@ -79,10 +79,12 @@ services:
 1. Congratulations! Everything works. And now you can sleep well or test failures of your servers as an experiment.
 
 # Available commands:
-- `dhaf --run <config_file>` - start dhaf cluster node using configuration file <config_file>;
-- `dhaf --status` - find out dhaf cluster status;
-- `dhaf --switchover master|replica` - manually switch to master or replica.
+- `dhaf run --config <config_file>` - start dhaf cluster node using configuration file <config_file>;
+- `dhaf status --config <config_file>` - find out dhaf cluster status using configuration file <config_file>;
+- `dhaf switchover --config <config_file> --to master|replica` - manually switch to master or replice using configuration file <config_file>;
+- `dhaf help <command>` - show help for the <command> comand.
 - `dhaf --help` - show help.
+- `dhaf --version` - show dhaf version.
 
 # Configuration file
 Major part:
