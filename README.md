@@ -49,27 +49,26 @@ Below is a simple example of how to make dhaf work.
 5. Create a Cloudflare account with a free plan (this will be enough). Transfer there DNS management for your domain name `foo.com`. Also note that your domain name must have only one A record in the DNS that has the Clouflare proxying checkbox checked. Otherwise, you will get [round-robin](https://en.wikipedia.org/wiki/Round-robin_DNS) detrimental for our purposes and/or unacceptably slow updating of DNS records for end clients;
     - ⚠️ Warning! To combat scammers, Cloudflare does not allow DNS configuration via the official API for domains with a .cf, .ga, .gq, .ml, or .tk TLD (top-level domain). Thus, it is not possible to work with them in **dhaf** either. However, it is still possible to manually configure them in Cloudflare Dashboard.
 6. Using the Clouflare dashboard, [create](https://dash.cloudflare.com/profile/api-tokens) an API token (if you have not already done so) with access to edit the DNS records of your domain zone. You also need to set an adequate TTL (lifetime) of your token, and keep it up to date.
-7. For the **first** watchdog server, сreate a configuration file `config-n1.dhaf`, which has the following contents:
+7. For the **first** dhaf node, сreate a configuration file `config-n1.dhaf`, which has the following contents:
 ```yaml
 cloudflare-api-token: <token>
 
-init:
-  dhaf-cluster-name: dhaf-cluster
-  dhaf-node-name: dhaf-node1
-  etcd:
-    hosts: 111.1.1.1:2379,112.2.2.2:2379,113.3.3.3:2379 
+dhaf:
+  cluster-name: dhaf-cluster
+  node-name: dhaf-node1
+  
+etcd:
+  hosts: 111.1.1.1:2379,112.2.2.2:2379,113.3.3.3:2379 
 
-services:
-  foo:
-    domain: foo.com
-    hosts:
-      master: 111.111.111.11
-      replica: 222.222.222.222
-    
-    health-check:
-      type: https
+service:
+  domain: foo.com
+  hosts:
+    master: 111.111.111.11
+    replica: 222.222.222.222
+  health-check:
+    type: https
 ```
-8. As you can see from the value of the `dhaf-node-name` parameter of the configuration file above, it is intended for the first server (hereinafter referred to as nodes). Create two more of these, replacing the value of the parameter `dhaf-node-name` with `dhaf-node2` and `dhaf-node3` respectively (as well as the name of the config so as not to get confused.);
+8. As you can see from the value of the `dhaf-node-name` parameter of the configuration file above, it is intended for the first dhaf node. Create two more of these, replacing the value of the parameter `dhaf-node-name` with `dhaf-node2` and `dhaf-node3` respectively (as well as the name of the config so as not to get confused.);
 9. The only thing left to do is to run dhaf on all watchdog servers (don't forget to substitute the appropriate configuration file):
 ```shell
 dhaf run --config config-n1.dhaf
@@ -93,16 +92,14 @@ Major part:
 |Parameter name|Type|Description|
 | - | :-: | - |
 | `cloudflare-api-token` | string | Your API access token for Cloudflare.|
-| `init.dhaf-cluster-name` | string | Dhaf cluster-name. The characters `a-zA-Z0-9` and `-` (hyphen) are allowed. |
-| `init.dhaf-node-name` | string | The name of the current dhaf cluster node. The characters `a-zA-Z0-9` and `-` (hyphen) are allowed. |
+| `dhaf.cluster-name` | string | Dhaf cluster-name. The characters `a-zA-Z0-9` and `-` (hyphen) are allowed. |
+| `dhaf.node-name` | string | The name of the current dhaf cluster node. The characters `a-zA-Z0-9` and `-` (hyphen) are allowed. |
 | `etcd.hosts` | string | Etcd hosts in the format `ip1:port1,ip2:port2,...,ipN:portN`. |
-| `services.<name>`| key | Server configuration `<name>`.|
-| `services.<name>.domain` | string | Domain name for service <name>. For example, `site.com`. |
-| `services.<name>.hosts.master` | string | IP address of the master server. Will be used immediately if available. |
-| `services.<name>.hosts.replica` | string | IP address of replica server. Will be used immediately if the master server is unavailable. |
-| `services.<name>.health-check.type` | string | Checker type. Now `http` and `https` are available. |
+| `service.domain` | string | Domain name for service <name>. For example, `site.com`. |
+| `service.hosts.<name>` | string | The IP address for the `<name>` server. Specified in order of priority for switching. |
+| `service.health-check.type` | string | Checker type. Now `http` and `https` are available. |
 
-The following optional parameters are also available in `services.<name>.health-check` when using http(s) checkers:
+The following optional parameters are also available in `service.health-check` when using http(s) checkers:
 |Parameter name|Type|Description|Default|
 | - | :-: | - | :-: |
 | `method` | string | HTTP method that the checker uses. Now `GET` and `POST` are available. | `GET` |
