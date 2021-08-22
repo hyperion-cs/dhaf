@@ -9,10 +9,14 @@
     <PackageReference Include="CommandLineParser" Version="2.8.0" />
     <PackageReference Include="dotnet-etcd" Version="4.2.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="5.0.0" />
+    <PackageReference Include="YamlDotNet" Version="11.2.1" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Dhaf.Core\Dhaf.Core.csproj" />
+    <ProjectReference Include="..\Dhaf.HealthCheckers.Http\Dhaf.HealthCheckers.Http.csproj" />
+    <ProjectReference Include="..\Dhaf.Switchers.Cloudflare\Dhaf.Switchers.Cloudflare.csproj" />
   </ItemGroup>
 
 </Project>
