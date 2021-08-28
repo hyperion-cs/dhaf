@@ -2,8 +2,7 @@
 {
     public class NetworkConfigurationStatus
     {
-        public string Name { get; set; }
-        public bool IsActive { get; set; }
+        public string HostId { get; set; }
         public bool Healthy { get; set; }
     }
 }

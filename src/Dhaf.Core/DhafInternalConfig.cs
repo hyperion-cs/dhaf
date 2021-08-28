@@ -30,6 +30,7 @@ namespace Dhaf.Core
         public int DefLeaderKeyTtl { get; set; } = 30;
 
         public string NodesPath { get; set; } = "nodes/";
+        public string HealthPath { get; set; } = "health/";
         public string ShutdownsPath { get; set; } = "shutdown/";
     }
 }

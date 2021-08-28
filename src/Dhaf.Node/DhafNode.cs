@@ -4,6 +4,7 @@ using Etcdserverpb;
 using Google.Protobuf;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -67,21 +68,24 @@ namespace Dhaf.Node
         /// <summary>
         /// The current role of the dhaf node.
         /// </summary>
-        protected DhafNodeRole Role = DhafNodeRole.Follower;
+        protected DhafNodeRole _role = DhafNodeRole.Follower;
 
         /// <summary>
         /// The etcd lease identifier for the leader key.
         /// </summary>
-        protected long? LeaderLeaseId;
+        protected long? _leaderLeaseId;
+        protected string _lastKnownLeader;
+        protected string _currentNetworkConfigurationId;
 
-        protected string LastKnownLeader;
+        protected ClusterConfig _clusterConfig;
+        protected DhafInternalConfig _dhafInternalConfig;
 
-        protected ClusterConfig _clusterConfig { get; set; }
-        protected DhafInternalConfig _dhafInternalConfig { get; set; }
-        protected string EtcdClusterRoot { get => $"/{_clusterConfig.Dhaf.ClusterName}/"; }
+        protected string _etcdClusterRoot { get => $"/{_clusterConfig.Dhaf.ClusterName}/"; }
 
-        public Dictionary<string, EtcdNodeStatus> EtcdNodeStatuses { get; set; }
+        protected Dictionary<string, EtcdNodeStatus> _etcdNodeStatuses
             = new Dictionary<string, EtcdNodeStatus>();
+
+        protected IEnumerable<NetworkConfigurationStatus> _networkConfigurationStatuses;
 
         public DhafNode(ClusterConfig clusterConfig,
             DhafInternalConfig dhafInternalConfig,
@@ -111,7 +115,7 @@ namespace Dhaf.Node
 
         public async Task<string> GetLeaderOrDefault()
         {
-            var leader = await _etcdClient.GetValAsync(EtcdClusterRoot + _dhafInternalConfig.Etcd.LeaderPath);
+            var leader = await _etcdClient.GetValAsync(_etcdClusterRoot + _dhafInternalConfig.Etcd.LeaderPath);
 
             if (string.IsNullOrEmpty(leader))
             {
@@ -123,14 +127,14 @@ namespace Dhaf.Node
 
         protected async Task ParticipateInLeaderElection()
         {
-            Role = DhafNodeRole.Candidate;
+            _role = DhafNodeRole.Candidate;
             Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] There is no leader. Participating in the election...");
             var promotionStatus = await TryPromotion();
 
             if (promotionStatus.Success)
             {
-                Role = DhafNodeRole.Leader;
-                LeaderLeaseId = promotionStatus.LeaderLeaseId;
+                _role = DhafNodeRole.Leader;
+                _leaderLeaseId = promotionStatus.LeaderLeaseId;
 
                 _backgroundTasks.FetchDhafNodeStatusesWithIntervalTask = FetchDhafNodeStatusesWithInterval();
 
@@ -138,16 +142,16 @@ namespace Dhaf.Node
             }
             else
             {
-                Role = DhafNodeRole.Follower;
+                _role = DhafNodeRole.Follower;
                 Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] {promotionStatus.Leader} is now the leader.");
             }
 
-            LastKnownLeader = promotionStatus.Leader;
+            _lastKnownLeader = promotionStatus.Leader;
         }
 
         public async Task<DemotionStatus> TryDemotion()
         {
-            var leaderPath = ByteString.CopyFromUtf8(EtcdClusterRoot + _dhafInternalConfig.Etcd.LeaderPath);
+            var leaderPath = ByteString.CopyFromUtf8(_etcdClusterRoot + _dhafInternalConfig.Etcd.LeaderPath);
             var isCurrentNodeLeader = new Compare
             {
                 Key = leaderPath,
@@ -188,7 +192,7 @@ namespace Dhaf.Node
 
             var putRequest = new PutRequest
             {
-                Key = ByteString.CopyFromUtf8(EtcdClusterRoot + _dhafInternalConfig.Etcd.LeaderPath),
+                Key = ByteString.CopyFromUtf8(_etcdClusterRoot + _dhafInternalConfig.Etcd.LeaderPath),
                 Value = ByteString.CopyFromUtf8(_clusterConfig.Dhaf.NodeName),
                 Lease = lease.ID,
             };
@@ -196,7 +200,7 @@ namespace Dhaf.Node
             var isLeaderKeyDoesNotExist = new Compare
             {
                 CreateRevision = EMPTY_CREATE_REVISION,
-                Key = ByteString.CopyFromUtf8(EtcdClusterRoot + _dhafInternalConfig.Etcd.LeaderPath),
+                Key = ByteString.CopyFromUtf8(_etcdClusterRoot + _dhafInternalConfig.Etcd.LeaderPath),
 
             };
 
@@ -240,32 +244,26 @@ namespace Dhaf.Node
 
         public async Task Heartbeat()
         {
-            if (Role == DhafNodeRole.Leader)
+            if (_role == DhafNodeRole.Leader)
             {
                 await _etcdClient.LeaseKeepAlive(new LeaseKeepAliveRequest
                 {
-                    ID = LeaderLeaseId.Value
+                    ID = _leaderLeaseId.Value
                 }, (lkaResp) => { }, CancellationToken.None);
 
-                Console.WriteLine($"[{ _clusterConfig.Dhaf.ClusterName}/{ _clusterConfig.Dhaf.NodeName}] The leader key with lease ID {LeaderLeaseId.Value} is kept alive.");
+                Console.WriteLine($"[{ _clusterConfig.Dhaf.ClusterName}/{ _clusterConfig.Dhaf.NodeName}] The leader key with lease ID {_leaderLeaseId.Value} is kept alive.");
             }
 
-            var key = EtcdClusterRoot
+            var key = _etcdClusterRoot
                 + _dhafInternalConfig.Etcd.NodesPath
                 + _clusterConfig.Dhaf.NodeName;
 
             var heartbeatTimestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
 
             var nodeStatus = new EtcdNodeStatus { LastHeartbeatTimestamp = heartbeatTimestamp };
-            string content = JsonSerializer.Serialize(nodeStatus, DhafInternalConfig.JsonSerializerOptions);
+            var content = JsonSerializer.Serialize(nodeStatus, DhafInternalConfig.JsonSerializerOptions);
 
-            var putRequest = new PutRequest
-            {
-                Key = ByteString.CopyFromUtf8(key),
-                Value = ByteString.CopyFromUtf8(content)
-            };
-
-            await _etcdClient.PutAsync(putRequest);
+            await _etcdClient.PutAsync(key, content);
             Console.WriteLine($"[{ _clusterConfig.Dhaf.ClusterName}/{ _clusterConfig.Dhaf.NodeName}] Heartbeat *knock-knock*.");
         }
 
@@ -279,16 +277,16 @@ namespace Dhaf.Node
             // To be sure that an asynchronous heartbeat does not happen during node shutdown.
             await _backgroundTasks.HeartbeatWithIntervalTask;
 
-            if (Role == DhafNodeRole.Leader)
+            if (_role == DhafNodeRole.Leader)
             {
                 await TryDemotion();
             }
 
-            var nodeKey = EtcdClusterRoot
+            var nodeKey = _etcdClusterRoot
                 + _dhafInternalConfig.Etcd.NodesPath
                 + _clusterConfig.Dhaf.NodeName;
 
-            var shutdownKey = EtcdClusterRoot
+            var shutdownKey = _etcdClusterRoot
                 + _dhafInternalConfig.Etcd.ShutdownsPath
                 + _clusterConfig.Dhaf.NodeName;
 
@@ -305,8 +303,18 @@ namespace Dhaf.Node
             {
                 Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] Check host <{host.Id}>...");
 
-                var opt = new HealthCheckerCheckOptions { HostId = host.Id };
-                await _healthChecker.Check(opt);
+                var status = await _healthChecker.Check(new HealthCheckerCheckOptions { HostId = host.Id });
+
+                var key = _etcdClusterRoot
+                    + _dhafInternalConfig.Etcd.HealthPath
+                    + _clusterConfig.Dhaf.NodeName + "/"
+                    + host.Id;
+
+                var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
+                var serviceHealth = new EtcdServiceHealth { Timestamp = timestamp, Healthy = status.Healthy };
+                var value = JsonSerializer.Serialize(serviceHealth, DhafInternalConfig.JsonSerializerOptions);
+
+                await _etcdClient.PutAsync(key, value);
             }
 
             Console.WriteLine("The health of the service's hosts has been checked.");
@@ -314,7 +322,55 @@ namespace Dhaf.Node
 
         public async Task<IEnumerable<NetworkConfigurationStatus>> InspectResultsOfNetworkConfigurationsHealthCheck()
         {
-            throw new NotImplementedException();
+            var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
+            var healthyNodes = _etcdNodeStatuses
+                .Where(x => (timestamp - x.Value.LastHeartbeatTimestamp)
+                                <= _dhafInternalConfig.DefHealthyNodeStatusTtl)
+                .Select(x => x.Key);
+
+            var hostsHealthOpinions = new Dictionary<string, List<EtcdServiceHealth>>();
+
+            foreach (var node in healthyNodes)
+            {
+                var keyPrefix = _etcdClusterRoot
+                    + _dhafInternalConfig.Etcd.HealthPath
+                    + node + "/";
+
+                var items = await _etcdClient.GetRangeValAsync(keyPrefix);
+
+                foreach (var item in items)
+                {
+                    var hostId = Path.GetFileName(item.Key);
+                    var value = JsonSerializer.Deserialize<EtcdServiceHealth>(item.Value, DhafInternalConfig.JsonSerializerOptions);
+
+                    if (!hostsHealthOpinions.ContainsKey(hostId))
+                    {
+                        hostsHealthOpinions[hostId] = new List<EtcdServiceHealth>();
+                    }
+
+                    hostsHealthOpinions[hostId].Add(value);
+                }
+            }
+
+            var healthyNodesTotalCount = healthyNodes.Count();
+            var healthyNodesMostCount = (healthyNodesTotalCount / 2) + 1; // Majority formula: 50% + 1.
+
+            var result = new List<NetworkConfigurationStatus>();
+
+            foreach (var hostHealthOpinions in hostsHealthOpinions)
+            {
+                var ncStatus = new NetworkConfigurationStatus { HostId = hostHealthOpinions.Key };
+
+                var positiveOpinons = hostHealthOpinions.Value.Count(x => x.Healthy);
+                if (positiveOpinons >= healthyNodesMostCount)
+                {
+                    ncStatus.Healthy = true;
+                }
+
+                result.Add(ncStatus);
+            }
+
+            return result;
         }
 
         public async Task FetchDhafNodeStatusesWithInterval()
@@ -322,7 +378,7 @@ namespace Dhaf.Node
             var interval = _clusterConfig.Dhaf.FetchDhafNodeStatusesInterval
                 ?? _dhafInternalConfig.DefFetchDhafNodeStatusesInterval;
 
-            while (Role == DhafNodeRole.Leader
+            while (_role == DhafNodeRole.Leader
                 && !_backgroundTasks.FetchDhafNodeStatusesWithIntervalCts.IsCancellationRequested)
             {
                 await FetchDhafNodeStatuses();
@@ -332,24 +388,52 @@ namespace Dhaf.Node
 
         public async Task FetchDhafNodeStatuses()
         {
-            var keyPrefix = EtcdClusterRoot
+            var keyPrefix = _etcdClusterRoot
                 + _dhafInternalConfig.Etcd.NodesPath;
 
             var values = await _etcdClient.GetRangeValAsync(keyPrefix);
-            var entities = values.ToDictionary(k => k.Key,
+            var entities = values.ToDictionary(k => Path.GetFileName(k.Key),
                 v => JsonSerializer.Deserialize<EtcdNodeStatus>(v.Value, DhafInternalConfig.JsonSerializerOptions));
 
-            EtcdNodeStatuses = entities;
+            _etcdNodeStatuses = entities;
         }
 
+        /// <summary>
+        /// Determines whether the network configuration should be switched automatically.
+        /// This is not always failover (e.g. switching to a higher priority network configuration
+        /// which has become healthy again).
+        /// </summary>
         public async Task<DecisionOfNetworkConfigurationSwitching> IsAutoSwitchingOfNetworkConfigurationRequired()
         {
-            throw new NotImplementedException();
+            var priorityNetConf = _networkConfigurationStatuses.FirstOrDefault(x => x.Healthy);
+            var currentNetConf = _networkConfigurationStatuses.FirstOrDefault(x => x.HostId == _currentNetworkConfigurationId);
+
+            if (!currentNetConf.Healthy)
+            {
+                return new DecisionOfNetworkConfigurationSwitching
+                {
+                    Failover = true,
+                    IsRequired = true,
+                    SwitchTo = priorityNetConf.HostId
+                };
+            }
+
+            if (priorityNetConf.HostId != currentNetConf.HostId)
+            {
+                return new DecisionOfNetworkConfigurationSwitching
+                {
+                    Failover = false,
+                    IsRequired = true,
+                    SwitchTo = priorityNetConf.HostId
+                };
+            }
+
+            return new DecisionOfNetworkConfigurationSwitching { Failover = false, IsRequired = false };
         }
 
         public async Task<DecisionOfNetworkConfigurationSwitching> IsManualSwitchingOfNetworkConfigurationRequired()
         {
-            throw new NotImplementedException();
+            return new DecisionOfNetworkConfigurationSwitching { Failover = false, IsRequired = false };
         }
 
         public async Task TactWithInterval()
@@ -365,7 +449,7 @@ namespace Dhaf.Node
 
         public async Task Tact()
         {
-            if (Role == DhafNodeRole.Follower)
+            if (_role == DhafNodeRole.Follower)
             {
                 var leader = await GetLeaderOrDefault();
 
@@ -393,19 +477,41 @@ namespace Dhaf.Node
                     await ParticipateInLeaderElection();
                 }
 
-                if (leader != null && LastKnownLeader != leader)
+                if (leader != null && _lastKnownLeader != leader)
                 {
                     Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] {leader} is now the leader.");
-                    LastKnownLeader = leader;
+                    _lastKnownLeader = leader;
                 }
             }
 
             await NetworkConfigurationsHealthCheck();
 
-            if (Role == DhafNodeRole.Leader)
+            if (_role == DhafNodeRole.Leader)
             {
-                // Произвести инспекцию всех чекеров здоровья СЕРВИСА (не то что выше!)...
-                // Результатов должно быть не меньше, чем 50%+1 ЗДОРОВЫХ узлов кластера.
+                _networkConfigurationStatuses = await InspectResultsOfNetworkConfigurationsHealthCheck();
+                _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
+
+                var autoSwitch = await IsAutoSwitchingOfNetworkConfigurationRequired();
+                if (autoSwitch.IsRequired)
+                {
+                    await _switcher.Switch(new SwitcherSwitchOptions
+                    {
+                        HostId = autoSwitch.SwitchTo,
+                        Failover = autoSwitch.Failover
+                    });
+                }
+                else
+                {
+                    var manualSwitch = await IsManualSwitchingOfNetworkConfigurationRequired();
+                    if (manualSwitch.IsRequired)
+                    {
+                        await _switcher.Switch(new SwitcherSwitchOptions
+                        {
+                            HostId = manualSwitch.SwitchTo,
+                            Failover = manualSwitch.Failover
+                        });
+                    }
+                }
             }
 
             var isShutdownRequested = await IsShutdownRequested();
@@ -417,7 +523,7 @@ namespace Dhaf.Node
 
         public async Task<bool> IsShutdownRequested()
         {
-            var key = EtcdClusterRoot
+            var key = _etcdClusterRoot
                 + _dhafInternalConfig.Etcd.ShutdownsPath
                 + _clusterConfig.Dhaf.NodeName;
 

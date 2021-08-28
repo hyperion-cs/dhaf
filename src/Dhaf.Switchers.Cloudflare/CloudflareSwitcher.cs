@@ -16,6 +16,7 @@ namespace Dhaf.Switchers.Cloudflare
 
         protected string _zoneId;
         protected string _dnsRecordAId;
+        protected string _currentNetworkConfigurationId;
 
         public string ExtensionName => "cloudflare";
 
@@ -71,6 +72,23 @@ namespace Dhaf.Switchers.Cloudflare
                 Console.WriteLine($"<A> record for the domain <{_serviceConfig.Domain}> has been successfully added.");
 
                 dnsRecord = addRecordResponse.Result;
+                _currentNetworkConfigurationId = primaryHost.Id;
+            }
+            else
+            {
+                var currentHost = _serviceConfig.Hosts.FirstOrDefault(x => x.IP == dnsRecord.Content);
+                if (currentHost == null)
+                {
+                    Console.WriteLine($"<A> record for the domain <{_serviceConfig.Domain}> contains an unknown IP address. Automatic replacement with the highest-priority IP...");
+
+                    var primaryHost = _serviceConfig.Hosts.FirstOrDefault();
+                    await EditDnsRecord(_zoneId, _dnsRecordAId, "A", _serviceConfig.Domain, primaryHost.IP);
+                    _currentNetworkConfigurationId = primaryHost.Id;
+                }
+                else
+                {
+                    _currentNetworkConfigurationId = currentHost.Id;
+                }
             }
 
             if (!dnsRecord.Proxied)
@@ -93,6 +111,8 @@ namespace Dhaf.Switchers.Cloudflare
             Console.WriteLine($"New IP: {host.IP}");
 
             await EditDnsRecord(_zoneId, _dnsRecordAId, "A", _serviceConfig.Domain, host.IP);
+            _currentNetworkConfigurationId = host.Id;
+
             Console.WriteLine($"Successfully switched to {host.IP}.");
         }
 
@@ -144,6 +164,11 @@ namespace Dhaf.Switchers.Cloudflare
             }
 
             Console.WriteLine($"<{type}> record for the domain {domainName} has been successfully updated.");
+        }
+
+        public async Task<string> GetCurrentNetworkConfigurationId()
+        {
+            return _currentNetworkConfigurationId;
         }
     }
 }

@@ -6,5 +6,7 @@ namespace Dhaf.Core
     {
         Task Init(SwitcherInitOptions options);
         Task Switch(SwitcherSwitchOptions options);
+
+        Task<string> GetCurrentNetworkConfigurationId();
     }
 }
