@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.CLI", "Dhaf.CLI\Dhaf.C
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.Switchers.Exec", "Dhaf.Switchers.Exec\Dhaf.Switchers.Exec.csproj", "{AF16D4AF-96D2-4D0A-B057-1FD5BC888E4B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.HealthCheckers.Http", "Dhaf.HealthCheckers.Http\Dhaf.HealthCheckers.Http.csproj", "{E34EFAB0-FAC0-4444-B981-42C60A2762B4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.HealthCheckers.Web", "Dhaf.HealthCheckers.Web\Dhaf.HealthCheckers.Web.csproj", "{E34EFAB0-FAC0-4444-B981-42C60A2762B4}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.Core", "Dhaf.Core\Dhaf.Core.csproj", "{ACE75F82-05C9-4BE6-A528-12F7CF4ABFDE}"
 EndProject

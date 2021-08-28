@@ -6,9 +6,9 @@ using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace Dhaf.HealthCheckers.Http
+namespace Dhaf.HealthCheckers.Web
 {
-    public class HttpHealthChecker : IHealthChecker
+    public class WebHealthChecker : IHealthChecker
     {
         private Config _config;
         private InternalConfig _internalConfig;

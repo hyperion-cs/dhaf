@@ -1,7 +1,7 @@
 ﻿using Dhaf.Core;
 using System.Collections.Generic;
 
-namespace Dhaf.HealthCheckers.Http
+namespace Dhaf.HealthCheckers.Web
 {
     public class Config : IHealthCheckerConfig
     {
