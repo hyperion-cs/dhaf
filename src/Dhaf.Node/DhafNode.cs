@@ -246,6 +246,8 @@ namespace Dhaf.Node
                 {
                     ID = LeaderLeaseId.Value
                 }, (lkaResp) => { }, CancellationToken.None);
+
+                Console.WriteLine($"[{ _clusterConfig.Dhaf.ClusterName}/{ _clusterConfig.Dhaf.NodeName}] The leader key with lease ID {LeaderLeaseId.Value} is kept alive.");
             }
 
             var key = EtcdClusterRoot
@@ -264,6 +266,7 @@ namespace Dhaf.Node
             };
 
             await _etcdClient.PutAsync(putRequest);
+            Console.WriteLine($"[{ _clusterConfig.Dhaf.ClusterName}/{ _clusterConfig.Dhaf.NodeName}] Heartbeat *knock-knock*.");
         }
 
         public async Task Shutdown()
@@ -298,14 +301,15 @@ namespace Dhaf.Node
 
         public async Task NetworkConfigurationsHealthCheck()
         {
-            // Надо как-то хост туда опрокинуть, че за хуйня нахуй..
-            var hosts = _clusterConfig.Service.Hosts;
-            foreach (var host in hosts)
+            foreach (var host in _clusterConfig.Service.Hosts)
             {
-                //await _healthChecker.Check();
+                Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] Check host <{host.Name}>...");
+
+                var opt = new HealthCheckerCheckOptions { HostName = host.Name };
+                await _healthChecker.Check(opt);
             }
 
-            Console.WriteLine();
+            Console.WriteLine("The health of the service's hosts has been checked.");
         }
 
         public async Task<IEnumerable<NetworkConfigurationStatus>> InspectResultsOfNetworkConfigurationsHealthCheck()
@@ -361,22 +365,6 @@ namespace Dhaf.Node
 
         public async Task Tact()
         {
-            // В фоне работают: сердцебиение, фетч в кэш здоровья узлов dhaf
-
-            // Надо бы отслеживание лидера запустить в фон. -> НЕТ! Это должно быть синхронно.
-
-            // Проверку здоровья сервисов + переключения оставить в такте переключений.
-            // нужно избежать двух параллельных тактов...
-
-
-            await NetworkConfigurationsHealthCheck();
-
-            if (Role == DhafNodeRole.Leader)
-            {
-                // Произвести инспекцию всех чекеров здоровья СЕРВИСА (не то что выше!)...
-                // Результатов должно быть не меньше, чем 50%+1 ЗДОРОВЫХ узлов кластера.
-            }
-
             if (Role == DhafNodeRole.Follower)
             {
                 var leader = await GetLeaderOrDefault();
@@ -385,6 +373,9 @@ namespace Dhaf.Node
                 {
                     // We are leaders, but for some reason we don't know about it.
                     // This is not normal.
+
+                    Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] WARN: Mismatch between the role of the current node in the local (follower) and remote (leader) storages. Try demotion...");
+
                     var demotionStatus = await TryDemotion();
                     if (demotionStatus.Success)
                     {
@@ -407,12 +398,14 @@ namespace Dhaf.Node
                     Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] {leader} is now the leader.");
                     LastKnownLeader = leader;
                 }
+            }
 
-                if (Role == DhafNodeRole.Leader)
-                {
-                    // Let's call the tact again to begin leader functions immediately.
-                    await Tact();
-                }
+            await NetworkConfigurationsHealthCheck();
+
+            if (Role == DhafNodeRole.Leader)
+            {
+                // Произвести инспекцию всех чекеров здоровья СЕРВИСА (не то что выше!)...
+                // Результатов должно быть не меньше, чем 50%+1 ЗДОРОВЫХ узлов кластера.
             }
 
             var isShutdownRequested = await IsShutdownRequested();

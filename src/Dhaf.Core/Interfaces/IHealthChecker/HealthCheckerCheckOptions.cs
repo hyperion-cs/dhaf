@@ -2,6 +2,6 @@
 {
     public class HealthCheckerCheckOptions
     {
-
+        public string HostName { get; set; }
     }
 }
