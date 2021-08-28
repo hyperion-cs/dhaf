@@ -14,8 +14,8 @@
   </ItemGroup>
 
 <Target Name="CopyExtension" Condition="'$(Configuration)' == 'Debug'" AfterTargets="AfterBuild">
-  <Copy SourceFiles="$(OutDir)\Dhaf.HealthCheckers.Http.dll;$(OutDir)\Dhaf.HealthCheckers.Http.deps.json"
-        DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net5\extensions\health-checkers\http" />
+  <Copy SourceFiles="$(OutDir)\Dhaf.HealthCheckers.Web.dll;$(OutDir)\Dhaf.HealthCheckers.Web.deps.json"
+        DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net5\extensions\health-checkers\web" />
 </Target>
 
 </Project>

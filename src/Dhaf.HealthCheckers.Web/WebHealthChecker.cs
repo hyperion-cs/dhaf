@@ -10,11 +10,11 @@ namespace Dhaf.HealthCheckers.Web
 {
     public class WebHealthChecker : IHealthChecker
     {
+        private IRestClient _client;
+
         private Config _config;
         private InternalConfig _internalConfig;
         private ClusterServiceConfig _serviceConfig;
-
-        private IRestClient _client;
 
         public string ExtensionName => "web";
 
@@ -23,7 +23,7 @@ namespace Dhaf.HealthCheckers.Web
 
         public async Task Init(HealthCheckerInitOptions options)
         {
-            Console.WriteLine("web switcher init...");
+            Console.Write("Web switcher init...");
 
             _config = (Config)options.Config;
             _internalConfig = (InternalConfig)options.InternalConfig;
@@ -34,6 +34,8 @@ namespace Dhaf.HealthCheckers.Web
                 FollowRedirects = _config.FollowRedirects ?? _internalConfig.DefFollowRedirects,
                 Timeout = _config.Timeout ?? _internalConfig.DefTimeout
             };
+
+            Console.WriteLine("OK.");
         }
 
         public async Task<HealthStatus> Check(HealthCheckerCheckOptions options)
