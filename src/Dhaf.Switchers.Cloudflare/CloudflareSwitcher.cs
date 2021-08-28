@@ -32,20 +32,20 @@ namespace Dhaf.Switchers.Cloudflare
 
             _client = new RestClient(_internalConfig.BaseUrl);
 
-            var zone = await GetZoneOrDefault(_serviceConfig.Domain);
+            var zone = await GetZoneOrDefault(_config.Zone);
 
             if (zone == null)
             {
-                throw new Exception($"The zone named {_serviceConfig.Domain} was not found in Cloudflare.");
+                throw new Exception($"The zone <{_config.Zone}> was not found in Cloudflare.");
             }
 
             if (zone.Status != "active" || zone.Paused)
             {
-                throw new Exception($"The zone named {_serviceConfig.Domain} is not active and/or paused in Cloudflare.");
+                throw new Exception($"The zone <{_config.Zone}> is not active and/or paused in Cloudflare.");
             }
 
             _zoneId = zone.Id;
-            Console.WriteLine($"Zone id for domain <{_serviceConfig.Domain}>: {_zoneId}");
+            Console.WriteLine($"Zone <{_config.Zone}> id: {_zoneId}");
 
             var dnsRecords = await GetDnsRecords(_zoneId, _serviceConfig.Domain, "A");
 
@@ -86,7 +86,14 @@ namespace Dhaf.Switchers.Cloudflare
 
         public async Task Switch(SwitcherSwitchOptions options)
         {
+            var host = _serviceConfig.Hosts.FirstOrDefault(x => x.Id == options.HostId);
 
+            Console.WriteLine($"[Cloudflare] Switch to host {host.Id} requested...");
+            Console.WriteLine($"Failover: {options.Failover}");
+            Console.WriteLine($"New IP: {host.IP}");
+
+            await EditDnsRecord(_zoneId, _dnsRecordAId, "A", _serviceConfig.Domain, host.IP);
+            Console.WriteLine($"Successfully switched to {host.IP}.");
         }
 
         protected async Task<ZoneDto> GetZoneOrDefault(string zoneName)

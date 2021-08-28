@@ -6,5 +6,6 @@ namespace Dhaf.Switchers.Cloudflare
     {
         public string ExtensionName => "cloudflare";
         public string ApiToken { get; set; }
+        public string Zone { get; set; }
     }
 }

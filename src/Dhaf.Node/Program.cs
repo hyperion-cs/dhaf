@@ -62,7 +62,6 @@ namespace Dhaf.Node
                 await healthChecker.Instance.Init(hcInitOptions);
                 await switcher.Instance.Init(swInitOptions);
 
-
                 var dhafNode = new DhafNode(parsedClusterConfig, dhafInternalConfig,
                     switcher.Instance, healthChecker.Instance);
 

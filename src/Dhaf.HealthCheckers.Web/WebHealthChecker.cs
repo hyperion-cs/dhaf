@@ -50,7 +50,7 @@ namespace Dhaf.HealthCheckers.Web
                 ?? (schema == _internalConfig.HttpSchema
                        ? _internalConfig.DefHttpPort : _internalConfig.DefHttpsPort);
 
-            var host = _serviceConfig.Hosts.FirstOrDefault(x => x.Name == options.HostName);
+            var host = _serviceConfig.Hosts.FirstOrDefault(x => x.Id == options.HostId);
 
             var uri = new Uri($"{schema}://{host.IP}:{port}");
 
@@ -73,14 +73,14 @@ namespace Dhaf.HealthCheckers.Web
                     || !CheckHttpCode(response.StatusCode, expectedCodes)
                     || !response.Content.Contains(expectedResponseBody))
                 {
-                    Console.WriteLine($"{options.HostName} aka {uri} -> Unhealthy. Try again...");
+                    Console.WriteLine($"{options.HostId} aka {uri} -> Unhealthy. Try again...");
                     continue;
                 }
-                Console.WriteLine($"{options.HostName} aka {uri} -> Healthy :)");
+                Console.WriteLine($"{options.HostId} aka {uri} -> Healthy :)");
                 return new HealthStatus { Healthy = true };
             }
 
-            Console.WriteLine($"{options.HostName} aka {uri} -> Unhealthy.");
+            Console.WriteLine($"{options.HostId} aka {uri} -> Unhealthy.");
             return new HealthStatus { Healthy = false };
         }
 

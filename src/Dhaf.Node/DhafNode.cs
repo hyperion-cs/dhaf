@@ -303,9 +303,9 @@ namespace Dhaf.Node
         {
             foreach (var host in _clusterConfig.Service.Hosts)
             {
-                Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] Check host <{host.Name}>...");
+                Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] Check host <{host.Id}>...");
 
-                var opt = new HealthCheckerCheckOptions { HostName = host.Name };
+                var opt = new HealthCheckerCheckOptions { HostId = host.Id };
                 await _healthChecker.Check(opt);
             }
 
