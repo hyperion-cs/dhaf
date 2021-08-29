@@ -2,6 +2,7 @@
 using dotnet_etcd;
 using Etcdserverpb;
 using Google.Protobuf;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -67,6 +68,7 @@ namespace Dhaf.Node
         private readonly DhafNodeBackgroundTasks _backgroundTasks;
         private readonly ISwitcher _switcher;
         private readonly IHealthChecker _healthChecker;
+        private readonly ILogger<IDhafNode> _logger;
 
         /// <summary>
         /// The current role of the dhaf node.
@@ -93,13 +95,16 @@ namespace Dhaf.Node
         public DhafNode(ClusterConfig clusterConfig,
             DhafInternalConfig dhafInternalConfig,
             ISwitcher switcher,
-            IHealthChecker healthChecker)
+            IHealthChecker healthChecker,
+            ILogger<IDhafNode> logger)
         {
             _clusterConfig = clusterConfig;
             _dhafInternalConfig = dhafInternalConfig;
 
             _healthChecker = healthChecker;
             _switcher = switcher;
+
+            _logger = logger;
 
             _etcdClient = new EtcdClient(_clusterConfig.Etcd.Hosts);
             _backgroundTasks = new DhafNodeBackgroundTasks();
@@ -458,13 +463,12 @@ namespace Dhaf.Node
 
         public async Task Tact()
         {
-            Console.WriteLine("Tact has begun.");
+            _logger.LogTrace("Tact has begun.");
 
             if (_role == DhafNodeRole.Leader)
             {
-                Console.WriteLine($"NC is <{_currentNetworkConfigurationId}>.");
+                _logger.LogDebug($"NC is <{_currentNetworkConfigurationId}>.");
             }
-
 
             if (_role == DhafNodeRole.Follower)
             {
@@ -575,11 +579,11 @@ namespace Dhaf.Node
                 await Shutdown();
             }
 
-            Console.WriteLine("Tact is over.");
+            _logger.LogTrace("Tact is over.");
 
             if (_role == DhafNodeRole.Leader)
             {
-                Console.WriteLine($"NC is <{_currentNetworkConfigurationId}>.");
+                _logger.LogDebug($"NC is <{_currentNetworkConfigurationId}>.");
             }
         }
 

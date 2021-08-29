@@ -1,5 +1,10 @@
 ﻿using CommandLine;
 using Dhaf.Core;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NLog;
+using NLog.Extensions.Logging;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,59 +21,95 @@ namespace Dhaf.Node
 
         static async Task Main(string[] args)
         {
-            ArgsOptions opt = null;
-            Parser.Default.ParseArguments<ArgsOptions>(args)
-                .WithParsed(p => opt = p);
+            var logger = LogManager.GetCurrentClassLogger();
 
-            if (opt != null)
+            try
             {
-                Console.WriteLine($"Configuration file is <{opt.ConfigPath}>");
+                var config = new ConfigurationBuilder()
+                   .SetBasePath(System.IO.Directory.GetCurrentDirectory())
+                   .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                   .Build();
 
-                var dhafInternalConfig = new DhafInternalConfig();
-                var extensionsScope = ExtensionsScopeFactory.GetExtensionsScope(dhafInternalConfig.Extensions);
-
-                var clusterConfigParser = new ClusterConfigParser(opt.ConfigPath, extensionsScope);
-                var parsedClusterConfig = await clusterConfigParser.Parse();
-
-                Console.WriteLine($"Switcher is <{parsedClusterConfig.Switcher.ExtensionName}>");
-                Console.WriteLine($"Health checker is <{parsedClusterConfig.HealthCheck.ExtensionName}>");
-
-                var healthChecker = extensionsScope.HealthCheckers
-                    .First(x => x.Instance.ExtensionName == parsedClusterConfig.HealthCheck.ExtensionName);
-
-                var switcher = extensionsScope.Switchers
-                    .First(x => x.Instance.ExtensionName == parsedClusterConfig.Switcher.ExtensionName);
-
-                var swInternalConfig = await clusterConfigParser.ParseExtensionInternal<ISwitcherInternalConfig>
-                    (switcher.ExtensionPath, switcher.Instance.InternalConfigType);
-
-                var hcInternalConfig = await clusterConfigParser.ParseExtensionInternal<IHealthCheckerInternalConfig>
-                        (healthChecker.ExtensionPath, healthChecker.Instance.InternalConfigType);
-
-                var hcInitOptions = new HealthCheckerInitOptions
+                var servicesProvider = BuildDi(config);
+                using (servicesProvider as IDisposable)
                 {
-                    Config = parsedClusterConfig.HealthCheck,
-                    ClusterServiceConfig = parsedClusterConfig.Service,
-                    InternalConfig = hcInternalConfig
-                };
+                    ArgsOptions opt = null;
+                    Parser.Default.ParseArguments<ArgsOptions>(args)
+                        .WithParsed(p => opt = p);
 
-                var swInitOptions = new SwitcherInitOptions
-                {
-                    Config = parsedClusterConfig.Switcher,
-                    ClusterServiceConfig = parsedClusterConfig.Service,
-                    InternalConfig = swInternalConfig
-                };
+                    if (opt != null)
+                    {
+                        Console.WriteLine($"Configuration file is <{opt.ConfigPath}>");
 
-                await healthChecker.Instance.Init(hcInitOptions);
-                await switcher.Instance.Init(swInitOptions);
+                        var dhafInternalConfig = new DhafInternalConfig();
+                        var extensionsScope = ExtensionsScopeFactory.GetExtensionsScope(dhafInternalConfig.Extensions);
 
-                var dhafNode = new DhafNode(parsedClusterConfig, dhafInternalConfig,
-                    switcher.Instance, healthChecker.Instance);
+                        var clusterConfigParser = new ClusterConfigParser(opt.ConfigPath, extensionsScope);
+                        var parsedClusterConfig = await clusterConfigParser.Parse();
 
-                await dhafNode.TactWithInterval();
+                        Console.WriteLine($"Switcher is <{parsedClusterConfig.Switcher.ExtensionName}>");
+                        Console.WriteLine($"Health checker is <{parsedClusterConfig.HealthCheck.ExtensionName}>");
+
+                        var healthChecker = extensionsScope.HealthCheckers
+                            .First(x => x.Instance.ExtensionName == parsedClusterConfig.HealthCheck.ExtensionName);
+
+                        var switcher = extensionsScope.Switchers
+                            .First(x => x.Instance.ExtensionName == parsedClusterConfig.Switcher.ExtensionName);
+
+                        var swInternalConfig = await clusterConfigParser.ParseExtensionInternal<ISwitcherInternalConfig>
+                            (switcher.ExtensionPath, switcher.Instance.InternalConfigType);
+
+                        var hcInternalConfig = await clusterConfigParser.ParseExtensionInternal<IHealthCheckerInternalConfig>
+                                (healthChecker.ExtensionPath, healthChecker.Instance.InternalConfigType);
+
+                        var hcInitOptions = new HealthCheckerInitOptions
+                        {
+                            Config = parsedClusterConfig.HealthCheck,
+                            ClusterServiceConfig = parsedClusterConfig.Service,
+                            InternalConfig = hcInternalConfig
+                        };
+
+                        var swInitOptions = new SwitcherInitOptions
+                        {
+                            Config = parsedClusterConfig.Switcher,
+                            ClusterServiceConfig = parsedClusterConfig.Service,
+                            InternalConfig = swInternalConfig
+                        };
+
+                        await healthChecker.Instance.Init(hcInitOptions);
+                        await switcher.Instance.Init(swInitOptions);
+
+                        var dhafNodeLogger = servicesProvider.GetRequiredService<ILogger<IDhafNode>>();
+
+                        var dhafNode = new DhafNode(parsedClusterConfig, dhafInternalConfig,
+                            switcher.Instance, healthChecker.Instance, dhafNodeLogger);
+
+                        await dhafNode.TactWithInterval();
+                    }
+                }
             }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "Stopped program because of exception");
+                throw;
+            }
+            finally
+            {
+                LogManager.Shutdown();
+                Console.WriteLine("* Dhaf node exit...");
+            }
+        }
 
-            Console.WriteLine("* Dhaf node exit...");
+        private static IServiceProvider BuildDi(IConfiguration config)
+        {
+            return new ServiceCollection()
+               .AddLogging(loggingBuilder =>
+               {
+                   loggingBuilder.ClearProviders();
+                   loggingBuilder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                   loggingBuilder.AddNLog(config);
+               })
+               .BuildServiceProvider();
         }
     }
 }
