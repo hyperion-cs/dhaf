@@ -113,11 +113,13 @@ namespace Dhaf.Node
             if ((_clusterConfig.Etcd.LeaderKeyTtl ?? _dhafInternalConfig.Etcd.DefLeaderKeyTtl)
                 <= (_clusterConfig.Dhaf.HeartbeatInterval ?? _dhafInternalConfig.DefHeartbeatInterval))
             {
-                throw new ArgumentException("The TTL of the leader key in the ETCD must be greater than the heartbeat interval of the Dhaf node.");
+                var err = "The TTL of the leader key in the ETCD must be greater than the heartbeat interval of the Dhaf node.";
+
+                _logger.LogCritical(err);
+                throw new ArgumentException(err);
             }
 
-            Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] Node has been successfully initialized.");
-
+            _logger.LogInformation("Node has been successfully initialized.");
             _backgroundTasks.HeartbeatWithIntervalTask = HeartbeatWithInterval();
         }
 
@@ -136,20 +138,20 @@ namespace Dhaf.Node
         protected async Task ParticipateInLeaderElection()
         {
             _role = DhafNodeRole.Candidate;
-            Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] There is no leader. Participating in the election...");
+            _logger.LogWarning("There is no leader. Participating in the election...");
+
             var promotionStatus = await TryPromotion();
 
             if (promotionStatus.Success)
             {
                 _role = DhafNodeRole.Leader;
                 _leaderLeaseId = promotionStatus.LeaderLeaseId;
-
-                Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] I'm a leader now.");
+                _logger.LogInformation("I'm a leader now.");
             }
             else
             {
                 _role = DhafNodeRole.Follower;
-                Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] {promotionStatus.Leader} is now the leader.");
+                _logger.LogInformation($"I'm a follower now, <{promotionStatus.Leader}> is the leader.");
             }
 
             _lastKnownLeader = promotionStatus.Leader;
@@ -257,7 +259,7 @@ namespace Dhaf.Node
                     ID = _leaderLeaseId.Value
                 }, (lkaResp) => { }, CancellationToken.None);
 
-                Console.WriteLine($"[{ _clusterConfig.Dhaf.ClusterName}/{ _clusterConfig.Dhaf.NodeName}] The leader key with lease ID {_leaderLeaseId.Value} is kept alive.");
+                _logger.LogTrace($"The leader key with lease ID {_leaderLeaseId.Value} is kept alive.");
             }
 
             var key = _etcdClusterRoot
@@ -270,13 +272,12 @@ namespace Dhaf.Node
             var content = JsonSerializer.Serialize(nodeStatus, DhafInternalConfig.JsonSerializerOptions);
 
             await _etcdClient.PutAsync(key, content);
-            Console.WriteLine($"[{ _clusterConfig.Dhaf.ClusterName}/{ _clusterConfig.Dhaf.NodeName}] Heartbeat *knock-knock*.");
+            _logger.LogTrace("Heartbeat *knock-knock*.");
         }
 
         public async Task Shutdown()
         {
-            Console.WriteLine($"[{ _clusterConfig.Dhaf.ClusterName}/{ _clusterConfig.Dhaf.NodeName}] Shutdown requested...");
-
+            _logger.LogInformation("Shutdown requested...");
             _backgroundTasks.HeartbeatWithIntervalCts.Cancel();
 
             // To be sure that an asynchronous heartbeat does not happen during node shutdown.
@@ -298,7 +299,7 @@ namespace Dhaf.Node
             await _etcdClient.DeleteAsync(nodeKey);
             await _etcdClient.DeleteAsync(shutdownKey);
 
-            Console.WriteLine("* Dhaf node exit...");
+            _logger.LogInformation("* Dhaf node exit...");
             Environment.Exit(0);
         }
 
@@ -306,7 +307,7 @@ namespace Dhaf.Node
         {
             foreach (var host in _clusterConfig.Service.Hosts)
             {
-                Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] Check host <{host.Id}>...");
+                _logger.LogTrace($"Check NC <{host.Id}>...");
 
                 var status = await _healthChecker.Check(new HealthCheckerCheckOptions { HostId = host.Id });
 
@@ -320,9 +321,12 @@ namespace Dhaf.Node
                 var value = JsonSerializer.Serialize(serviceHealth, DhafInternalConfig.JsonSerializerOptions);
 
                 await _etcdClient.PutAsync(key, value);
+
+                var statusPretty = status.Healthy ? "Healthy :)" : "Unhealthy.";
+                _logger.LogInformation($"NC <{host.Id}> status: {statusPretty}");
             }
 
-            Console.WriteLine("The health of the service's hosts has been checked.");
+            _logger.LogTrace("The health of the service's hosts has been checked.");
         }
 
         public async Task<IEnumerable<NetworkConfigurationStatus>> InspectResultsOfNetworkConfigurationsHealthCheck()
@@ -479,7 +483,7 @@ namespace Dhaf.Node
                     // We are leaders, but for some reason we don't know about it.
                     // This is not normal.
 
-                    Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] WARN: Mismatch between the role of the current node in the local (follower) and remote (leader) storages. Try demotion...");
+                    _logger.LogWarning("Mismatch between the role of the current node in the local (follower) and remote (leader) storages. Try demotion...");
 
                     var demotionStatus = await TryDemotion();
                     if (demotionStatus.Success)
@@ -500,7 +504,7 @@ namespace Dhaf.Node
 
                 if (leader != null && _lastKnownLeader != leader)
                 {
-                    Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] {leader} is now the leader.");
+                    _logger.LogInformation($"<{leader}> is now the leader.");
                     _lastKnownLeader = leader;
                 }
             }
@@ -526,11 +530,12 @@ namespace Dhaf.Node
                 {
                     if (isExistsSwitchoverRequirement)
                     {
-                        Console.WriteLine("Purge switchover requirement because failover is required...");
+                        _logger.LogWarning("Purge switchover requirement because failover is required...");
                         await PurgeManualSwitchover();
                     }
 
-                    Console.WriteLine($"Current NC <{_currentNetworkConfigurationId}> is DOWN. A failover has been started...");
+                    _logger.LogWarning($"Current NC <{_currentNetworkConfigurationId}> is DOWN. A failover has been started...");
+
                     await _switcher.Switch(new SwitcherSwitchOptions
                     {
                         HostId = autoSwitch.SwitchTo,
@@ -544,8 +549,7 @@ namespace Dhaf.Node
 
                     if (proposedHost.Healthy)
                     {
-
-                        Console.WriteLine("A manual switchover is requested...");
+                        _logger.LogInformation("A manual switchover is requested...");
                         await _switcher.Switch(new SwitcherSwitchOptions
                         {
                             HostId = manualSwitch.SwitchTo,
@@ -554,7 +558,8 @@ namespace Dhaf.Node
                     }
                     else
                     {
-                        Console.WriteLine($"A manual swithover is requested but it is not possible because the specified network configuration <{manualSwitch.SwitchTo}> is unhealthy.");
+                        _logger.LogError($"A manual swithover is requested but it is not possible because the specified network configuration <{manualSwitch.SwitchTo}> is unhealthy.");
+
                         await PurgeManualSwitchover();
                         mustAutoSwitchover = autoSwitch.IsRequired && !autoSwitch.Failover;
                     }
@@ -562,7 +567,8 @@ namespace Dhaf.Node
 
                 if (mustAutoSwitchover)
                 {
-                    Console.WriteLine($"Automatic switchover to a higher priority healthy NC <{autoSwitch.SwitchTo}>...");
+                    _logger.LogInformation($"Automatic switchover to a higher priority healthy NC <{autoSwitch.SwitchTo}>...");
+
                     await _switcher.Switch(new SwitcherSwitchOptions
                     {
                         HostId = autoSwitch.SwitchTo,

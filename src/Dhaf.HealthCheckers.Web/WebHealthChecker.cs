@@ -73,14 +73,11 @@ namespace Dhaf.HealthCheckers.Web
                     || !CheckHttpCode(response.StatusCode, expectedCodes)
                     || !response.Content.Contains(expectedResponseBody))
                 {
-                    Console.WriteLine($"{options.HostId} aka {uri} -> Seems unhealthy. Try again...");
                     continue;
                 }
-                Console.WriteLine($"{options.HostId} aka {uri} -> Healthy :)");
                 return new HealthStatus { Healthy = true };
             }
 
-            Console.WriteLine($"{options.HostId} aka {uri} -> Unhealthy.");
             return new HealthStatus { Healthy = false };
         }
 
