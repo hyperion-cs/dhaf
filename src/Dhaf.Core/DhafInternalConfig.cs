@@ -10,7 +10,6 @@ namespace Dhaf.Core
 
         public int DefHeartbeatInterval { get; set; } = 5;
         public int DefTactInterval { get; set; } = 10;
-        public int DefFetchDhafNodeStatusesInterval { get; set; } = 30;
         public int DefHealthyNodeStatusTtl { get; set; } = 30;
 
         public List<string> Extensions { get; set; } = new List<string>()
@@ -27,10 +26,11 @@ namespace Dhaf.Core
     public class DhafInternalConfigEtcd
     {
         public string LeaderPath { get; set; } = "leader";
-        public int DefLeaderKeyTtl { get; set; } = 30;
+        public int DefLeaderKeyTtl { get; set; } = 15;
 
         public string NodesPath { get; set; } = "nodes/";
         public string HealthPath { get; set; } = "health/";
         public string ShutdownsPath { get; set; } = "shutdown/";
+        public string ManualSwitchingPath { get; set; } = "manual_switching";
     }
 }

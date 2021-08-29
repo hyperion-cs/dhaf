@@ -49,6 +49,9 @@ namespace Dhaf.Node
         Task<DecisionOfNetworkConfigurationSwitching> IsAutoSwitchingOfNetworkConfigurationRequired();
 
         Task<DecisionOfNetworkConfigurationSwitching> IsManualSwitchingOfNetworkConfigurationRequired();
+        Task<bool> IsExistsSwitchoverRequirement();
+
+        Task PurgeManualSwitchover();
 
         /// <summary>
         /// The dhaf cluster node tact, which does all the necessary things from the node lifecycle.
@@ -135,8 +138,6 @@ namespace Dhaf.Node
             {
                 _role = DhafNodeRole.Leader;
                 _leaderLeaseId = promotionStatus.LeaderLeaseId;
-
-                _backgroundTasks.FetchDhafNodeStatusesWithIntervalTask = FetchDhafNodeStatusesWithInterval();
 
                 Console.WriteLine($"[{_clusterConfig.Dhaf.ClusterName}/{_clusterConfig.Dhaf.NodeName}] I'm a leader now.");
             }
@@ -271,7 +272,6 @@ namespace Dhaf.Node
         {
             Console.WriteLine($"[{ _clusterConfig.Dhaf.ClusterName}/{ _clusterConfig.Dhaf.NodeName}] Shutdown requested...");
 
-            _backgroundTasks.FetchDhafNodeStatusesWithIntervalCts.Cancel();
             _backgroundTasks.HeartbeatWithIntervalCts.Cancel();
 
             // To be sure that an asynchronous heartbeat does not happen during node shutdown.
@@ -373,19 +373,6 @@ namespace Dhaf.Node
             return result;
         }
 
-        public async Task FetchDhafNodeStatusesWithInterval()
-        {
-            var interval = _clusterConfig.Dhaf.FetchDhafNodeStatusesInterval
-                ?? _dhafInternalConfig.DefFetchDhafNodeStatusesInterval;
-
-            while (_role == DhafNodeRole.Leader
-                && !_backgroundTasks.FetchDhafNodeStatusesWithIntervalCts.IsCancellationRequested)
-            {
-                await FetchDhafNodeStatuses();
-                await Task.Delay(TimeSpan.FromSeconds(interval));
-            }
-        }
-
         public async Task FetchDhafNodeStatuses()
         {
             var keyPrefix = _etcdClusterRoot
@@ -407,6 +394,7 @@ namespace Dhaf.Node
         {
             var priorityNetConf = _networkConfigurationStatuses.FirstOrDefault(x => x.Healthy);
             var currentNetConf = _networkConfigurationStatuses.FirstOrDefault(x => x.HostId == _currentNetworkConfigurationId);
+
 
             if (!currentNetConf.Healthy)
             {
@@ -433,6 +421,27 @@ namespace Dhaf.Node
 
         public async Task<DecisionOfNetworkConfigurationSwitching> IsManualSwitchingOfNetworkConfigurationRequired()
         {
+            var key = _etcdClusterRoot
+                + _dhafInternalConfig.Etcd.ManualSwitchingPath;
+
+            var rawValue = await _etcdClient.GetValAsync(key);
+
+            if (!string.IsNullOrEmpty(rawValue))
+            {
+                var value = JsonSerializer.Deserialize<EtcdManualSwitching>(rawValue, DhafInternalConfig.JsonSerializerOptions);
+
+                if (_currentNetworkConfigurationId != value.NCId)
+                {
+
+                    return new DecisionOfNetworkConfigurationSwitching
+                    {
+                        Failover = false,
+                        IsRequired = true,
+                        SwitchTo = value.NCId
+                    };
+                }
+            }
+
             return new DecisionOfNetworkConfigurationSwitching { Failover = false, IsRequired = false };
         }
 
@@ -449,6 +458,14 @@ namespace Dhaf.Node
 
         public async Task Tact()
         {
+            Console.WriteLine("Tact has begun.");
+
+            if (_role == DhafNodeRole.Leader)
+            {
+                Console.WriteLine($"NC is <{_currentNetworkConfigurationId}>.");
+            }
+
+
             if (_role == DhafNodeRole.Follower)
             {
                 var leader = await GetLeaderOrDefault();
@@ -488,36 +505,81 @@ namespace Dhaf.Node
 
             if (_role == DhafNodeRole.Leader)
             {
+                await FetchDhafNodeStatuses();
                 _networkConfigurationStatuses = await InspectResultsOfNetworkConfigurationsHealthCheck();
                 _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
 
                 var autoSwitch = await IsAutoSwitchingOfNetworkConfigurationRequired();
-                if (autoSwitch.IsRequired)
+                var manualSwitch = await IsManualSwitchingOfNetworkConfigurationRequired();
+
+                var isExistsSwitchoverRequirement = await IsExistsSwitchoverRequirement();
+                var mustSwitchover = manualSwitch.IsRequired && !autoSwitch.Failover;
+
+                var mustAutoSwitchover = autoSwitch.IsRequired
+                    && !autoSwitch.Failover && !isExistsSwitchoverRequirement;
+
+                if (autoSwitch.Failover)
                 {
+                    if (isExistsSwitchoverRequirement)
+                    {
+                        Console.WriteLine("Purge switchover requirement because failover is required...");
+                        await PurgeManualSwitchover();
+                    }
+
+                    Console.WriteLine($"Current NC <{_currentNetworkConfigurationId}> is DOWN. A failover has been started...");
                     await _switcher.Switch(new SwitcherSwitchOptions
                     {
                         HostId = autoSwitch.SwitchTo,
                         Failover = autoSwitch.Failover
                     });
                 }
-                else
+                if (mustSwitchover)
                 {
-                    var manualSwitch = await IsManualSwitchingOfNetworkConfigurationRequired();
-                    if (manualSwitch.IsRequired)
+                    var proposedHost = _networkConfigurationStatuses
+                        .FirstOrDefault(x => x.HostId == manualSwitch.SwitchTo);
+
+                    if (proposedHost.Healthy)
                     {
+
+                        Console.WriteLine("A manual switchover is requested...");
                         await _switcher.Switch(new SwitcherSwitchOptions
                         {
                             HostId = manualSwitch.SwitchTo,
                             Failover = manualSwitch.Failover
                         });
                     }
+                    else
+                    {
+                        Console.WriteLine($"A manual swithover is requested but it is not possible because the specified network configuration <{manualSwitch.SwitchTo}> is unhealthy.");
+                        await PurgeManualSwitchover();
+                        mustAutoSwitchover = autoSwitch.IsRequired && !autoSwitch.Failover;
+                    }
                 }
+
+                if (mustAutoSwitchover)
+                {
+                    Console.WriteLine($"Automatic switchover to a higher priority healthy NC <{autoSwitch.SwitchTo}>...");
+                    await _switcher.Switch(new SwitcherSwitchOptions
+                    {
+                        HostId = autoSwitch.SwitchTo,
+                        Failover = autoSwitch.Failover
+                    });
+                }
+
+                _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
             }
 
             var isShutdownRequested = await IsShutdownRequested();
             if (isShutdownRequested)
             {
                 await Shutdown();
+            }
+
+            Console.WriteLine("Tact is over.");
+
+            if (_role == DhafNodeRole.Leader)
+            {
+                Console.WriteLine($"NC is <{_currentNetworkConfigurationId}>.");
             }
         }
 
@@ -531,6 +593,24 @@ namespace Dhaf.Node
 
             return value == _clusterConfig.Dhaf.NodeName;
         }
+
+        public async Task PurgeManualSwitchover()
+        {
+            var key = _etcdClusterRoot
+                + _dhafInternalConfig.Etcd.ManualSwitchingPath;
+
+            await _etcdClient.DeleteAsync(key);
+        }
+
+        public async Task<bool> IsExistsSwitchoverRequirement()
+        {
+            var key = _etcdClusterRoot
+                + _dhafInternalConfig.Etcd.ManualSwitchingPath;
+
+            var rawValue = await _etcdClient.GetValAsync(key);
+
+            return !string.IsNullOrEmpty(rawValue);
+        }
     }
 
     /// <summary>
@@ -540,10 +620,6 @@ namespace Dhaf.Node
     {
         public Task HeartbeatWithIntervalTask { get; set; }
         public CancellationTokenSource HeartbeatWithIntervalCts { get; set; }
-            = new CancellationTokenSource();
-
-        public Task FetchDhafNodeStatusesWithIntervalTask { get; set; }
-        public CancellationTokenSource FetchDhafNodeStatusesWithIntervalCts { get; set; }
             = new CancellationTokenSource();
     }
 }
