@@ -322,8 +322,14 @@ namespace Dhaf.Node
 
                 await _etcdClient.PutAsync(key, value);
 
-                var statusPretty = status.Healthy ? "Healthy :)" : "Unhealthy.";
-                _logger.LogInformation($"NC <{host.Id}> status: {statusPretty}");
+                if (status.Healthy)
+                {
+                    _logger.LogInformation($"NC <{host.Id}> status: Healthy :)");
+                }
+                else
+                {
+                    _logger.LogWarning($"NC <{host.Id}> status: Unhealthy.");
+                }
             }
 
             _logger.LogTrace("The health of the service's hosts has been checked.");
