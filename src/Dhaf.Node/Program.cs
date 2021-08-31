@@ -62,8 +62,13 @@ namespace Dhaf.Node
                         var hcInternalConfig = await clusterConfigParser.ParseExtensionInternal<IHealthCheckerInternalConfig>
                                 (healthChecker.ExtensionPath, healthChecker.Instance.InternalConfigType);
 
+                        var dhafNodeLogger = servicesProvider.GetRequiredService<ILogger<IDhafNode>>();
+                        var swLogger = servicesProvider.GetRequiredService<ILogger<ISwitcher>>();
+                        var hcLogger = servicesProvider.GetRequiredService<ILogger<IHealthChecker>>();
+
                         var hcInitOptions = new HealthCheckerInitOptions
                         {
+                            Logger = hcLogger,
                             Config = parsedClusterConfig.HealthCheck,
                             ClusterServiceConfig = parsedClusterConfig.Service,
                             InternalConfig = hcInternalConfig
@@ -71,6 +76,7 @@ namespace Dhaf.Node
 
                         var swInitOptions = new SwitcherInitOptions
                         {
+                            Logger = swLogger,
                             Config = parsedClusterConfig.Switcher,
                             ClusterServiceConfig = parsedClusterConfig.Service,
                             InternalConfig = swInternalConfig
@@ -78,8 +84,6 @@ namespace Dhaf.Node
 
                         await healthChecker.Instance.Init(hcInitOptions);
                         await switcher.Instance.Init(swInitOptions);
-
-                        var dhafNodeLogger = servicesProvider.GetRequiredService<ILogger<IDhafNode>>();
 
                         var dhafNode = new DhafNode(parsedClusterConfig, dhafInternalConfig,
                             switcher.Instance, healthChecker.Instance, dhafNodeLogger);

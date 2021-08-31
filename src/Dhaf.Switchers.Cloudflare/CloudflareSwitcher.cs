@@ -1,4 +1,5 @@
 ﻿using Dhaf.Core;
+using Microsoft.Extensions.Logging;
 using RestSharp;
 using System;
 using System.Linq;
@@ -9,6 +10,7 @@ namespace Dhaf.Switchers.Cloudflare
     public class CloudflareSwitcher : ISwitcher
     {
         private IRestClient _client;
+        private ILogger<ISwitcher> _logger;
 
         private Config _config;
         private InternalConfig _internalConfig;
@@ -26,6 +28,8 @@ namespace Dhaf.Switchers.Cloudflare
         public async Task Init(SwitcherInitOptions options)
         {
             Console.WriteLine("Сloudflare switcher init...");
+
+            _logger = options.Logger;
 
             _config = (Config)options.Config;
             _internalConfig = (InternalConfig)options.InternalConfig;
