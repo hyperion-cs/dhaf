@@ -39,7 +39,11 @@ namespace Dhaf.Node
 
                     if (opt != null)
                     {
-                        Console.WriteLine($"Configuration file is <{opt.ConfigPath}>");
+                        var dhafNodeLogger = servicesProvider.GetRequiredService<ILogger<IDhafNode>>();
+                        var swLogger = servicesProvider.GetRequiredService<ILogger<ISwitcher>>();
+                        var hcLogger = servicesProvider.GetRequiredService<ILogger<IHealthChecker>>();
+
+                        dhafNodeLogger.LogInformation($"Configuration file is <{opt.ConfigPath}>.");
 
                         var dhafInternalConfig = new DhafInternalConfig();
                         var extensionsScope = ExtensionsScopeFactory.GetExtensionsScope(dhafInternalConfig.Extensions);
@@ -47,8 +51,8 @@ namespace Dhaf.Node
                         var clusterConfigParser = new ClusterConfigParser(opt.ConfigPath, extensionsScope);
                         var parsedClusterConfig = await clusterConfigParser.Parse();
 
-                        Console.WriteLine($"Switcher is <{parsedClusterConfig.Switcher.ExtensionName}>");
-                        Console.WriteLine($"Health checker is <{parsedClusterConfig.HealthCheck.ExtensionName}>");
+                        dhafNodeLogger.LogDebug($"Switcher is <{parsedClusterConfig.Switcher.ExtensionName}>.");
+                        dhafNodeLogger.LogDebug($"Health checker is <{parsedClusterConfig.HealthCheck.ExtensionName}>.");
 
                         var healthChecker = extensionsScope.HealthCheckers
                             .First(x => x.Instance.ExtensionName == parsedClusterConfig.HealthCheck.ExtensionName);
@@ -61,10 +65,6 @@ namespace Dhaf.Node
 
                         var hcInternalConfig = await clusterConfigParser.ParseExtensionInternal<IHealthCheckerInternalConfig>
                                 (healthChecker.ExtensionPath, healthChecker.Instance.InternalConfigType);
-
-                        var dhafNodeLogger = servicesProvider.GetRequiredService<ILogger<IDhafNode>>();
-                        var swLogger = servicesProvider.GetRequiredService<ILogger<ISwitcher>>();
-                        var hcLogger = servicesProvider.GetRequiredService<ILogger<IHealthChecker>>();
 
                         var hcInitOptions = new HealthCheckerInitOptions
                         {
@@ -94,13 +94,13 @@ namespace Dhaf.Node
             }
             catch (Exception ex)
             {
-                logger.Error(ex, "Stopped program because of exception");
+                logger.Error(ex, "Stopped program because of exception.");
                 throw;
             }
             finally
             {
+                logger.Info("* Dhaf node exit...");
                 LogManager.Shutdown();
-                Console.WriteLine("* Dhaf node exit...");
             }
         }
 
