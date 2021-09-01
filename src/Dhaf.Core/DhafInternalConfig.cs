@@ -14,7 +14,7 @@ namespace Dhaf.Core
 
         public List<string> Extensions { get; set; } = new List<string>()
         {
-            "health-checkers/web", "switchers/cloudflare", "switchers/exec"
+            "health-checkers/web", "health-checkers/exec", "switchers/cloudflare", "switchers/exec"
         };
 
         public static Encoding ConfigsEncoding { get; set; } = Encoding.UTF8;

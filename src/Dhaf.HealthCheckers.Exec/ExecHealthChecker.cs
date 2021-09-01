@@ -1,5 +1,7 @@
 ﻿using Dhaf.Core;
+using Microsoft.Extensions.Logging;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Dhaf.HealthCheckers.Exec
@@ -10,6 +12,12 @@ namespace Dhaf.HealthCheckers.Exec
     /// </summary>
     public class ExecHealthChecker : IHealthChecker
     {
+        private ILogger<IHealthChecker> _logger;
+
+        private Config _config;
+        private InternalConfig _internalConfig;
+        private ClusterServiceConfig _serviceConfig;
+
         public string ExtensionName => "exec";
 
         public Type ConfigType => typeof(Config);
@@ -17,14 +25,40 @@ namespace Dhaf.HealthCheckers.Exec
 
         public string LoggerSign => $"[{ExtensionName} hc]";
 
-        public Task Init(HealthCheckerInitOptions config)
+        public async Task Init(HealthCheckerInitOptions options)
         {
-            throw new NotImplementedException();
+            _logger = options.Logger;
+            _logger.LogInformation($"{LoggerSign} Init process...");
+
+            _config = (Config)options.Config;
+            _internalConfig = (InternalConfig)options.InternalConfig;
+            _serviceConfig = options.ClusterServiceConfig;
+
+            var execResults = Shell.Exec(_config.Init);
+
+            if (!execResults.Success || execResults.ExitCode != 0)
+            {
+                throw new Exception($"{LoggerSign} Init failed.");
+            }
+
+            _logger.LogDebug($"{LoggerSign} Init output: <{execResults.Output}>");
+            _logger.LogDebug($"{LoggerSign} Init total exec time: {execResults.TotalExecuteTime} ms.");
+            _logger.LogInformation($"{LoggerSign} Init OK.");
         }
 
-        public Task<HealthStatus> Check(HealthCheckerCheckOptions options)
+        public async Task<HealthStatus> Check(HealthCheckerCheckOptions options)
         {
-            throw new NotImplementedException();
+            var nc = _serviceConfig.NetworkConfigurations.FirstOrDefault(x => x.Id == options.NcId);
+
+            var args = $"{nc.Id} {nc.IP}";
+            var execResults = Shell.Exec(_config.Check);
+
+            if (execResults.Success && execResults.ExitCode == 0)
+            {
+                return new HealthStatus { Healthy = true };
+            }
+
+            return new HealthStatus { Healthy = false };
         }
     }
 }
