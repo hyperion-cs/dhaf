@@ -88,7 +88,20 @@ namespace Dhaf.Node
                         var dhafNode = new DhafNode(parsedClusterConfig, dhafInternalConfig,
                             switcher.Instance, healthChecker.Instance, dhafNodeLogger);
 
+                        dhafNodeLogger.LogInformation("[rest api] Init process...");
+
+                        var restApiFactory = new RestApiFactory();
+                        var restApiHost = parsedClusterConfig.Dhaf.WebApi.Host ?? dhafInternalConfig.WebApi.DefHost;
+                        var restApiPort = parsedClusterConfig.Dhaf.WebApi.Port ?? dhafInternalConfig.WebApi.DefPort;
+                        var restApiUrl = $"http://{restApiHost}:{restApiPort}/";
+
+                        var resApiServer = restApiFactory.CreateWebServer(restApiUrl);
+                        var restApiTask = resApiServer.RunAsync();
+
+                        dhafNodeLogger.LogInformation($"[rest api] Started on {restApiUrl}.");
+
                         await dhafNode.TactWithInterval();
+                        resApiServer.Dispose();
                     }
                 }
             }

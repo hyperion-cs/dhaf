@@ -7,6 +7,7 @@ namespace Dhaf.Core
     public class DhafInternalConfig
     {
         public DhafInternalConfigEtcd Etcd { get; set; } = new DhafInternalConfigEtcd();
+        public DhafInternalConfigWebApi WebApi { get; set; } = new DhafInternalConfigWebApi();
 
         public int DefHeartbeatInterval { get; set; } = 5;
         public int DefTactInterval { get; set; } = 10;
@@ -32,5 +33,11 @@ namespace Dhaf.Core
         public string HealthPath { get; set; } = "health/";
         public string ShutdownsPath { get; set; } = "shutdown/";
         public string ManualSwitchingPath { get; set; } = "manual_switching";
+    }
+
+    public class DhafInternalConfigWebApi
+    {
+        public string DefHost { get; set; } = "localhost";
+        public int DefPort { get; set; } = 8128;
     }
 }
