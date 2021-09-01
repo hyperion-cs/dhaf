@@ -305,34 +305,43 @@ namespace Dhaf.Node
 
         public async Task NetworkConfigurationsHealthCheck()
         {
+            var tasks = new List<Task>();
+
             foreach (var nc in _clusterConfig.Service.NetworkConfigurations)
             {
-                _logger.LogTrace($"Check NC <{nc.Id}>...");
-
-                var status = await _healthChecker.Check(new HealthCheckerCheckOptions { NcId = nc.Id });
-
-                var key = _etcdClusterRoot
-                    + _dhafInternalConfig.Etcd.HealthPath
-                    + _clusterConfig.Dhaf.NodeName + "/"
-                    + nc.Id;
-
-                var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
-                var serviceHealth = new EtcdServiceHealth { Timestamp = timestamp, Healthy = status.Healthy };
-                var value = JsonSerializer.Serialize(serviceHealth, DhafInternalConfig.JsonSerializerOptions);
-
-                await _etcdClient.PutAsync(key, value);
-
-                if (status.Healthy)
-                {
-                    _logger.LogInformation($"NC <{nc.Id}> status: Healthy :)");
-                }
-                else
-                {
-                    _logger.LogWarning($"NC <{nc.Id}> status: Unhealthy.");
-                }
+                tasks.Add(NetworkConfigurationHealthCheck(nc));
             }
 
+            await Task.WhenAll(tasks);
+
             _logger.LogTrace("The health of the service's hosts has been checked.");
+        }
+
+        protected async Task NetworkConfigurationHealthCheck(ClusterServiceNetworkConfig nc)
+        {
+            _logger.LogTrace($"Check NC <{nc.Id}>...");
+
+            var status = await _healthChecker.Check(new HealthCheckerCheckOptions { NcId = nc.Id });
+
+            var key = _etcdClusterRoot
+                + _dhafInternalConfig.Etcd.HealthPath
+                + _clusterConfig.Dhaf.NodeName + "/"
+                + nc.Id;
+
+            var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
+            var serviceHealth = new EtcdServiceHealth { Timestamp = timestamp, Healthy = status.Healthy };
+            var value = JsonSerializer.Serialize(serviceHealth, DhafInternalConfig.JsonSerializerOptions);
+
+            await _etcdClient.PutAsync(key, value);
+
+            if (status.Healthy)
+            {
+                _logger.LogInformation($"NC <{nc.Id}> status: Healthy :)");
+            }
+            else
+            {
+                _logger.LogWarning($"NC <{nc.Id}> status: Unhealthy.");
+            }
         }
 
         public async Task<IEnumerable<NetworkConfigurationStatus>> InspectResultsOfNetworkConfigurationsHealthCheck()
