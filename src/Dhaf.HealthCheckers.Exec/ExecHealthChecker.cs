@@ -15,6 +15,8 @@ namespace Dhaf.HealthCheckers.Exec
         public Type ConfigType => typeof(Config);
         public Type InternalConfigType => typeof(InternalConfig);
 
+        public string LoggerSign => $"[{ExtensionName} hc]";
+
         public Task Init(HealthCheckerInitOptions config)
         {
             throw new NotImplementedException();
