@@ -95,7 +95,7 @@ namespace Dhaf.Node
                         var restApiPort = parsedClusterConfig.Dhaf.WebApi.Port ?? dhafInternalConfig.WebApi.DefPort;
                         var restApiUrl = $"http://{restApiHost}:{restApiPort}/";
 
-                        var resApiServer = restApiFactory.CreateWebServer(restApiUrl);
+                        var resApiServer = restApiFactory.CreateWebServer(restApiUrl, dhafNode, dhafNodeLogger);
                         var restApiTask = resApiServer.RunAsync();
 
                         dhafNodeLogger.LogInformation($"[rest api] Started on {restApiUrl}.");

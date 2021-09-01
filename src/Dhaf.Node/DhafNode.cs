@@ -1,5 +1,6 @@
 ﻿using Dhaf.Core;
 using dotnet_etcd;
+using EmbedIO;
 using Etcdserverpb;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
@@ -52,6 +53,7 @@ namespace Dhaf.Node
         Task<DecisionOfNetworkConfigurationSwitching> IsManualSwitchingOfNetworkConfigurationRequired();
         Task<bool> IsExistsSwitchoverRequirement();
 
+        Task Switchover(string ncId);
         Task PurgeManualSwitchover();
 
         /// <summary>
@@ -380,7 +382,7 @@ namespace Dhaf.Node
 
             foreach (var hostHealthOpinions in hostsHealthOpinions)
             {
-                var ncStatus = new NetworkConfigurationStatus { HostId = hostHealthOpinions.Key };
+                var ncStatus = new NetworkConfigurationStatus { NcId = hostHealthOpinions.Key };
 
                 var positiveOpinons = hostHealthOpinions.Value.Count(x => x.Healthy);
                 if (positiveOpinons >= healthyNodesMostCount)
@@ -414,7 +416,7 @@ namespace Dhaf.Node
         public async Task<DecisionOfNetworkConfigurationSwitching> IsAutoSwitchingOfNetworkConfigurationRequired()
         {
             var priorityNetConf = _networkConfigurationStatuses.FirstOrDefault(x => x.Healthy);
-            var currentNetConf = _networkConfigurationStatuses.FirstOrDefault(x => x.HostId == _currentNetworkConfigurationId);
+            var currentNetConf = _networkConfigurationStatuses.FirstOrDefault(x => x.NcId == _currentNetworkConfigurationId);
 
 
             if (!currentNetConf.Healthy)
@@ -423,17 +425,17 @@ namespace Dhaf.Node
                 {
                     Failover = true,
                     IsRequired = true,
-                    SwitchTo = priorityNetConf.HostId
+                    SwitchTo = priorityNetConf.NcId
                 };
             }
 
-            if (priorityNetConf.HostId != currentNetConf.HostId)
+            if (priorityNetConf.NcId != currentNetConf.NcId)
             {
                 return new DecisionOfNetworkConfigurationSwitching
                 {
                     Failover = false,
                     IsRequired = true,
-                    SwitchTo = priorityNetConf.HostId
+                    SwitchTo = priorityNetConf.NcId
                 };
             }
 
@@ -557,7 +559,7 @@ namespace Dhaf.Node
                 if (mustSwitchover)
                 {
                     var proposedHost = _networkConfigurationStatuses
-                        .FirstOrDefault(x => x.HostId == manualSwitch.SwitchTo);
+                        .FirstOrDefault(x => x.NcId == manualSwitch.SwitchTo);
 
                     if (proposedHost.Healthy)
                     {
@@ -632,6 +634,35 @@ namespace Dhaf.Node
             var rawValue = await _etcdClient.GetValAsync(key);
 
             return !string.IsNullOrEmpty(rawValue);
+        }
+
+        public async Task Switchover(string ncId)
+        {
+            var ncStatus = _networkConfigurationStatuses.FirstOrDefault(x => x.NcId == ncId);
+
+            if (ncStatus == null)
+            {
+                throw new HttpException(101, "There is no network configuration with this ID.");
+            }
+
+            if (!ncStatus.Healthy)
+            {
+                throw new HttpException(102, "Cannot switchover to the specified network configuration because it is unhealthy.");
+            }
+
+            await PurgeManualSwitchover();
+
+            var key = _etcdClusterRoot
+                + _dhafInternalConfig.Etcd.ManualSwitchingPath;
+
+            var entity = new EtcdManualSwitching
+            {
+                NCId = ncId,
+                DhafNode = _clusterConfig.Dhaf.NodeName
+            };
+
+            var value = JsonSerializer.Serialize(entity, DhafInternalConfig.JsonSerializerOptions);
+            await _etcdClient.PutAsync(key, value);
         }
     }
 
