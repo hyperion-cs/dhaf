@@ -64,8 +64,8 @@ namespace Dhaf.Switchers.Cloudflare
             {
                 _logger.LogWarning($"{LoggerSign} The <{_serviceConfig.Domain}> domain name has no <A> record.\nAutomatically insert the necessary <A> record...");
 
-                var primaryHost = _serviceConfig.Hosts.FirstOrDefault();
-                var addRecordResponse = await CreateDnsRecord(_zoneId, _serviceConfig.Domain, "A", primaryHost.IP);
+                var primaryNC = _serviceConfig.NetworkConfigurations.FirstOrDefault();
+                var addRecordResponse = await CreateDnsRecord(_zoneId, _serviceConfig.Domain, "A", primaryNC.IP);
 
                 if (!addRecordResponse.Success)
                 {
@@ -77,22 +77,22 @@ namespace Dhaf.Switchers.Cloudflare
                 _logger.LogInformation($"{LoggerSign} <A> record for the domain <{_serviceConfig.Domain}> has been successfully added.");
 
                 dnsRecord = addRecordResponse.Result;
-                _currentNetworkConfigurationId = primaryHost.Id;
+                _currentNetworkConfigurationId = primaryNC.Id;
             }
             else
             {
-                var currentHost = _serviceConfig.Hosts.FirstOrDefault(x => x.IP == dnsRecord.Content);
-                if (currentHost == null)
+                var currentNC = _serviceConfig.NetworkConfigurations.FirstOrDefault(x => x.IP == dnsRecord.Content);
+                if (currentNC == null)
                 {
                     _logger.LogWarning($"{LoggerSign} <A> record for the domain <{_serviceConfig.Domain}> contains an unknown IP address. Automatic replacement with the highest-priority IP...");
 
-                    var primaryHost = _serviceConfig.Hosts.FirstOrDefault();
-                    await EditDnsRecord(_zoneId, _dnsRecordAId, "A", _serviceConfig.Domain, primaryHost.IP);
-                    _currentNetworkConfigurationId = primaryHost.Id;
+                    var primaryNC = _serviceConfig.NetworkConfigurations.FirstOrDefault();
+                    await EditDnsRecord(_zoneId, _dnsRecordAId, "A", _serviceConfig.Domain, primaryNC.IP);
+                    _currentNetworkConfigurationId = primaryNC.Id;
                 }
                 else
                 {
-                    _currentNetworkConfigurationId = currentHost.Id;
+                    _currentNetworkConfigurationId = currentNC.Id;
                 }
             }
 
@@ -109,16 +109,16 @@ namespace Dhaf.Switchers.Cloudflare
 
         public async Task Switch(SwitcherSwitchOptions options)
         {
-            var host = _serviceConfig.Hosts.FirstOrDefault(x => x.Id == options.HostId);
+            var nc = _serviceConfig.NetworkConfigurations.FirstOrDefault(x => x.Id == options.NcId);
 
-            _logger.LogInformation($"{LoggerSign} Switch to NC <{host.Id}> requested...");
+            _logger.LogInformation($"{LoggerSign} Switch to NC <{nc.Id}> requested...");
             _logger.LogDebug($"{LoggerSign} Failover: {options.Failover}");
-            _logger.LogDebug($"{LoggerSign} New IP: {host.IP}");
+            _logger.LogDebug($"{LoggerSign} New IP: {nc.IP}");
 
-            await EditDnsRecord(_zoneId, _dnsRecordAId, "A", _serviceConfig.Domain, host.IP);
-            _currentNetworkConfigurationId = host.Id;
+            await EditDnsRecord(_zoneId, _dnsRecordAId, "A", _serviceConfig.Domain, nc.IP);
+            _currentNetworkConfigurationId = nc.Id;
 
-            _logger.LogInformation($"{LoggerSign} Successfully switched to NC <{host.Id}>.");
+            _logger.LogInformation($"{LoggerSign} Successfully switched to NC <{nc.Id}>.");
         }
 
         protected async Task<ZoneDto> GetZoneOrDefault(string zoneName)

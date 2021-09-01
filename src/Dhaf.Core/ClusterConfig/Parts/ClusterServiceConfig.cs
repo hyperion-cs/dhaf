@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using YamlDotNet.Serialization;
 
 namespace Dhaf.Core
 {
@@ -6,6 +7,7 @@ namespace Dhaf.Core
     {
         public string Domain { get; set; }
 
-        public List<ClusterServiceHostConfig> Hosts { get; set; }
+        [YamlMember(Alias = "network-conf")]
+        public List<ClusterServiceNetworkConfig> NetworkConfigurations { get; set; }
     }
 }

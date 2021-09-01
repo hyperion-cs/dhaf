@@ -305,16 +305,16 @@ namespace Dhaf.Node
 
         public async Task NetworkConfigurationsHealthCheck()
         {
-            foreach (var host in _clusterConfig.Service.Hosts)
+            foreach (var nc in _clusterConfig.Service.NetworkConfigurations)
             {
-                _logger.LogTrace($"Check NC <{host.Id}>...");
+                _logger.LogTrace($"Check NC <{nc.Id}>...");
 
-                var status = await _healthChecker.Check(new HealthCheckerCheckOptions { HostId = host.Id });
+                var status = await _healthChecker.Check(new HealthCheckerCheckOptions { NcId = nc.Id });
 
                 var key = _etcdClusterRoot
                     + _dhafInternalConfig.Etcd.HealthPath
                     + _clusterConfig.Dhaf.NodeName + "/"
-                    + host.Id;
+                    + nc.Id;
 
                 var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
                 var serviceHealth = new EtcdServiceHealth { Timestamp = timestamp, Healthy = status.Healthy };
@@ -324,11 +324,11 @@ namespace Dhaf.Node
 
                 if (status.Healthy)
                 {
-                    _logger.LogInformation($"NC <{host.Id}> status: Healthy :)");
+                    _logger.LogInformation($"NC <{nc.Id}> status: Healthy :)");
                 }
                 else
                 {
-                    _logger.LogWarning($"NC <{host.Id}> status: Unhealthy.");
+                    _logger.LogWarning($"NC <{nc.Id}> status: Unhealthy.");
                 }
             }
 
@@ -544,7 +544,7 @@ namespace Dhaf.Node
 
                     await _switcher.Switch(new SwitcherSwitchOptions
                     {
-                        HostId = autoSwitch.SwitchTo,
+                        NcId = autoSwitch.SwitchTo,
                         Failover = autoSwitch.Failover
                     });
                 }
@@ -558,7 +558,7 @@ namespace Dhaf.Node
                         _logger.LogInformation("A manual switchover is requested...");
                         await _switcher.Switch(new SwitcherSwitchOptions
                         {
-                            HostId = manualSwitch.SwitchTo,
+                            NcId = manualSwitch.SwitchTo,
                             Failover = manualSwitch.Failover
                         });
                     }
@@ -577,7 +577,7 @@ namespace Dhaf.Node
 
                     await _switcher.Switch(new SwitcherSwitchOptions
                     {
-                        HostId = autoSwitch.SwitchTo,
+                        NcId = autoSwitch.SwitchTo,
                         Failover = autoSwitch.Failover
                     });
                 }

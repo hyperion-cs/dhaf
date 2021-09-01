@@ -54,9 +54,9 @@ namespace Dhaf.HealthCheckers.Web
                 ?? (schema == _internalConfig.HttpSchema
                        ? _internalConfig.DefHttpPort : _internalConfig.DefHttpsPort);
 
-            var host = _serviceConfig.Hosts.FirstOrDefault(x => x.Id == options.HostId);
+            var nc = _serviceConfig.NetworkConfigurations.FirstOrDefault(x => x.Id == options.NcId);
 
-            var uri = new Uri($"{schema}://{host.IP}:{port}");
+            var uri = new Uri($"{schema}://{nc.IP}:{port}");
 
             const int RETRYING_INIT_VALUE = 0;
 

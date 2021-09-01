@@ -2,6 +2,7 @@
 {
     public class HealthCheckerCheckOptions
     {
-        public string HostId { get; set; }
+        /// <summary>Network Configuration ID.</summary>
+        public string NcId { get; set; }
     }
 }
