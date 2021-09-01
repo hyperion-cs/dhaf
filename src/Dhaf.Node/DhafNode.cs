@@ -305,12 +305,9 @@ namespace Dhaf.Node
 
         public async Task NetworkConfigurationsHealthCheck()
         {
-            var tasks = new List<Task>();
-
-            foreach (var nc in _clusterConfig.Service.NetworkConfigurations)
-            {
-                tasks.Add(NetworkConfigurationHealthCheck(nc));
-            }
+            var tasks = _clusterConfig.Service
+                .NetworkConfigurations
+                .Select(x => NetworkConfigurationHealthCheck(x));
 
             await Task.WhenAll(tasks);
 
