@@ -8,4 +8,9 @@ namespace Dhaf.Node
 
         public IEnumerable<RestApiError> Errors { get; set; } = new List<RestApiError>();
     }
+
+    public class RestApiResponse<T> : RestApiResponse
+    {
+        public T Data { get; set; }
+    }
 }

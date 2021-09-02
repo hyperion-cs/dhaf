@@ -16,6 +16,10 @@ namespace Dhaf.Node
 {
     public interface IDhafNode
     {
+        ServiceStatus ServiceStatus { get; }
+        Task<DhafStatus> GetDhafStatus();
+        Task<DcsStatus> GetDcsStatus();
+
         /// <summary>Checks if a cluster leader exists.</summary>
         /// <returns>The name of the leader node or null if the cluster leader does not exist.</returns>
         Task<string> GetLeaderOrDefault();
@@ -89,10 +93,18 @@ namespace Dhaf.Node
 
         protected string _etcdClusterRoot { get => $"/{_clusterConfig.Dhaf.ClusterName}/"; }
 
-        protected Dictionary<string, EtcdNodeStatus> _etcdNodeStatuses
+        protected Dictionary<string, EtcdNodeStatus> _dhafNodeStatuses
             = new Dictionary<string, EtcdNodeStatus>();
 
         protected IEnumerable<NetworkConfigurationStatus> _networkConfigurationStatuses;
+
+        public ServiceStatus ServiceStatus => new ServiceStatus
+        {
+            Domain = _clusterConfig.Service.Domain,
+            CurrentNcName = _currentNetworkConfigurationId,
+            NetworkConfigurations = _networkConfigurationStatuses
+                .Select(x => new ServiceNcStatus { Name = x.NcId, Healthy = x.Healthy })
+        };
 
         public DhafNode(ClusterConfig clusterConfig,
             DhafInternalConfig dhafInternalConfig,
@@ -122,6 +134,20 @@ namespace Dhaf.Node
             }
 
             _backgroundTasks.HeartbeatWithIntervalTask = HeartbeatWithInterval();
+        }
+
+        public async Task<DhafStatus> GetDhafStatus()
+        {
+            var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
+
+            var nodeStatuses = _dhafNodeStatuses
+                .Select(x => new DhafNodeStatus
+                {
+                    Name = x.Key,
+                    Healthy = (timestamp - x.Value.LastHeartbeatTimestamp) <= _dhafInternalConfig.DefHealthyNodeStatusTtl
+                });
+
+            return new DhafStatus { Leader = _lastKnownLeader, Nodes = nodeStatuses };
         }
 
         public async Task<string> GetLeaderOrDefault()
@@ -345,7 +371,7 @@ namespace Dhaf.Node
         public async Task<IEnumerable<NetworkConfigurationStatus>> InspectResultsOfNetworkConfigurationsHealthCheck()
         {
             var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
-            var healthyNodes = _etcdNodeStatuses
+            var healthyNodes = _dhafNodeStatuses
                 .Where(x => (timestamp - x.Value.LastHeartbeatTimestamp)
                                 <= _dhafInternalConfig.DefHealthyNodeStatusTtl)
                 .Select(x => x.Key);
@@ -404,7 +430,7 @@ namespace Dhaf.Node
             var entities = values.ToDictionary(k => Path.GetFileName(k.Key),
                 v => JsonSerializer.Deserialize<EtcdNodeStatus>(v.Value, DhafInternalConfig.JsonSerializerOptions));
 
-            _etcdNodeStatuses = entities;
+            _dhafNodeStatuses = entities;
         }
 
         /// <summary>
@@ -659,6 +685,30 @@ namespace Dhaf.Node
 
             var value = JsonSerializer.Serialize(entity, DhafInternalConfig.JsonSerializerOptions);
             await _etcdClient.PutAsync(key, value);
+        }
+
+        public async Task<DcsStatus> GetDcsStatus()
+        {
+            const char SPLIT_CHAR = ',';
+            var nodes = _clusterConfig.Etcd.Hosts
+                .Split(SPLIT_CHAR)
+                .Select(x => x.Trim());
+
+            var dcsStatus = await _etcdClient.StatusASync(new StatusRequest { });
+
+            var nodesCount = nodes.Count();
+            var majority = nodesCount / 2 + 1; // Majority formula: 50% + 1.
+            var failureTolerance = nodesCount - majority;
+
+            var result = new DcsStatus
+            {
+                DcsClusterHealthy = dcsStatus.Errors.Count == 0,
+                FailureTolerance = failureTolerance,
+                Majority = majority,
+                NodesCount = nodesCount,
+            };
+
+            return result;
         }
     }
 
