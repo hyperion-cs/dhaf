@@ -27,7 +27,7 @@ namespace Dhaf.HealthCheckers.Web
         public async Task Init(HealthCheckerInitOptions options)
         {
             _logger = options.Logger;
-            _logger.LogInformation($"{LoggerSign} Init process...");
+            _logger.LogTrace($"{LoggerSign} Init process...");
 
             _config = (Config)options.Config;
             _internalConfig = (InternalConfig)options.InternalConfig;

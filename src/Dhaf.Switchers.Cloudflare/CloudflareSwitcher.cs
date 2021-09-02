@@ -29,7 +29,7 @@ namespace Dhaf.Switchers.Cloudflare
         public async Task Init(SwitcherInitOptions options)
         {
             _logger = options.Logger;
-            _logger.LogInformation($"{LoggerSign} Init process...");
+            _logger.LogTrace($"{LoggerSign} Init process...");
 
             _config = (Config)options.Config;
             _internalConfig = (InternalConfig)options.InternalConfig;

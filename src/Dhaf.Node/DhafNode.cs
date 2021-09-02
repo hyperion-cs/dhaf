@@ -121,7 +121,6 @@ namespace Dhaf.Node
                 throw new ArgumentException(err);
             }
 
-            _logger.LogInformation("Node has been successfully initialized.");
             _backgroundTasks.HeartbeatWithIntervalTask = HeartbeatWithInterval();
         }
 
@@ -525,12 +524,14 @@ namespace Dhaf.Node
 
             await NetworkConfigurationsHealthCheck();
 
+            // The following tasks need to be performed NOT ONLY by the leader
+            // in order for the CLI/REST API to work fully.
+            await FetchDhafNodeStatuses();
+            _networkConfigurationStatuses = await InspectResultsOfNetworkConfigurationsHealthCheck();
+
             if (_role == DhafNodeRole.Leader)
             {
-                await FetchDhafNodeStatuses();
-                _networkConfigurationStatuses = await InspectResultsOfNetworkConfigurationsHealthCheck();
                 _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
-
                 var autoSwitch = await IsAutoSwitchingOfNetworkConfigurationRequired();
                 var manualSwitch = await IsManualSwitchingOfNetworkConfigurationRequired();
 
@@ -589,8 +590,6 @@ namespace Dhaf.Node
                         Failover = autoSwitch.Failover
                     });
                 }
-
-                _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
             }
 
             var isShutdownRequested = await IsShutdownRequested();
@@ -599,12 +598,9 @@ namespace Dhaf.Node
                 await Shutdown();
             }
 
+            _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
             _logger.LogTrace("Tact is over.");
-
-            if (_role == DhafNodeRole.Leader)
-            {
-                _logger.LogDebug($"NC is <{_currentNetworkConfigurationId}>.");
-            }
+            _logger.LogDebug($"NC is <{_currentNetworkConfigurationId}>.");
         }
 
         public async Task<bool> IsShutdownRequested()

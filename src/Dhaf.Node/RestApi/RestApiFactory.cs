@@ -39,9 +39,10 @@ namespace Dhaf.Node
             {
                 context.Response.StatusCode = 400;
 
+                var msg = exception.StatusCode == 404 ? "Endpoint not found." : exception.Message;
                 var errors = new List<RestApiError>()
                 {
-                    new RestApiError { Code = exception.StatusCode, Message = exception.Message }
+                    new RestApiError { Code = exception.StatusCode, Message = msg }
                 };
 
                 await context.SendDataAsync(SerializationCallback, new RestApiResponse

@@ -36,5 +36,13 @@ namespace Dhaf.Node
             await _dhafNode.Switchover(ncId);
             return new RestApiResponse { Success = true };
         }
+
+        [Route(HttpVerbs.Get, "/switchover/purge")]
+        public async Task<RestApiResponse> SwitchoverPurge()
+        {
+            await _dhafNode.PurgeManualSwitchover();
+            return new RestApiResponse { Success = true };
+        }
+
     }
 }

@@ -51,8 +51,9 @@ namespace Dhaf.Node
                         var clusterConfigParser = new ClusterConfigParser(opt.ConfigPath, extensionsScope);
                         var parsedClusterConfig = await clusterConfigParser.Parse();
 
-                        dhafNodeLogger.LogDebug($"Switcher is <{parsedClusterConfig.Switcher.ExtensionName}>.");
-                        dhafNodeLogger.LogDebug($"Health checker is <{parsedClusterConfig.HealthCheck.ExtensionName}>.");
+                        dhafNodeLogger.LogInformation($"I am <{parsedClusterConfig.Dhaf.NodeName}> in the <{parsedClusterConfig.Dhaf.ClusterName}> cluster.");
+                        dhafNodeLogger.LogDebug($"Switcher provider is <{parsedClusterConfig.Switcher.ExtensionName}>.");
+                        dhafNodeLogger.LogDebug($"Health checker provider is <{parsedClusterConfig.HealthCheck.ExtensionName}>.");
 
                         var healthChecker = extensionsScope.HealthCheckers
                             .First(x => x.Instance.ExtensionName == parsedClusterConfig.HealthCheck.ExtensionName);
@@ -88,7 +89,7 @@ namespace Dhaf.Node
                         var dhafNode = new DhafNode(parsedClusterConfig, dhafInternalConfig,
                             switcher.Instance, healthChecker.Instance, dhafNodeLogger);
 
-                        dhafNodeLogger.LogInformation("[rest api] Init process...");
+                        dhafNodeLogger.LogTrace("[rest api] Init process...");
 
                         var restApiFactory = new RestApiFactory();
                         var restApiHost = parsedClusterConfig.Dhaf.WebApi.Host ?? dhafInternalConfig.WebApi.DefHost;
@@ -99,6 +100,7 @@ namespace Dhaf.Node
                         var restApiTask = resApiServer.RunAsync();
 
                         dhafNodeLogger.LogInformation($"[rest api] Started on {restApiUrl}.");
+                        dhafNodeLogger.LogInformation("Node has been successfully initialized.");
 
                         await dhafNode.TactWithInterval();
                         resApiServer.Dispose();
