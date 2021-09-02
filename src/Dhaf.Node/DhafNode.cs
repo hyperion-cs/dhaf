@@ -59,6 +59,8 @@ namespace Dhaf.Node
         Task Switchover(string ncId);
         Task PurgeManualSwitchover();
 
+        Task<IEnumerable<SwitchoverCandidate>> GetSwitchoverCandidates();
+
         /// <summary>
         /// The dhaf cluster node tact, which does all the necessary things from the node lifecycle.
         /// </summary>
@@ -684,6 +686,19 @@ namespace Dhaf.Node
 
             var value = JsonSerializer.Serialize(entity, DhafInternalConfig.JsonSerializerOptions);
             await _etcdClient.PutAsync(key, value);
+        }
+
+        public async Task<IEnumerable<SwitchoverCandidate>> GetSwitchoverCandidates()
+        {
+            var healthyNodes = _networkConfigurationStatuses
+                .Where(x => x.Healthy)
+                .Select(x => x.NcId);
+
+            var candidates = _clusterConfig.Service.NetworkConfigurations
+                .Select((nc, i) => new SwitchoverCandidate { Name = nc.Id, Priority = i + 1 })
+                .Where(nc => healthyNodes.Contains(nc.Name));
+
+            return candidates;
         }
     }
 

@@ -3,6 +3,7 @@ using EmbedIO.Routing;
 using EmbedIO.WebApi;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Dhaf.Node
@@ -42,6 +43,13 @@ namespace Dhaf.Node
         {
             await _dhafNode.PurgeManualSwitchover();
             return new RestApiResponse { Success = true };
+        }
+
+        [Route(HttpVerbs.Get, "/switchover/candidates")]
+        public async Task<RestApiResponse> SwitchoverСandidates()
+        {
+            var candidates = await _dhafNode.GetSwitchoverCandidates();
+            return new RestApiResponse<IEnumerable<SwitchoverCandidate>> { Success = true, Data = candidates };
         }
 
         [Route(HttpVerbs.Get, "/service/status")]
