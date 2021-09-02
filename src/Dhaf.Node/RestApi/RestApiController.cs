@@ -57,12 +57,5 @@ namespace Dhaf.Node
             var status = await _dhafNode.GetDhafStatus();
             return new RestApiResponse<DhafStatus> { Success = true, Data = status };
         }
-
-        [Route(HttpVerbs.Get, "/dcs/status")]
-        public async Task<RestApiResponse> DcsStatus()
-        {
-            var status = await _dhafNode.GetDcsStatus();
-            return new RestApiResponse<DcsStatus> { Success = true, Data = status };
-        }
     }
 }

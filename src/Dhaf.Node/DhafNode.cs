@@ -18,7 +18,6 @@ namespace Dhaf.Node
     {
         ServiceStatus ServiceStatus { get; }
         Task<DhafStatus> GetDhafStatus();
-        Task<DcsStatus> GetDcsStatus();
 
         /// <summary>Checks if a cluster leader exists.</summary>
         /// <returns>The name of the leader node or null if the cluster leader does not exist.</returns>
@@ -548,11 +547,11 @@ namespace Dhaf.Node
                 }
             }
 
+            await FetchDhafNodeStatuses();
             await NetworkConfigurationsHealthCheck();
 
-            // The following tasks need to be performed NOT ONLY by the leader
+            // The following task need to be performed NOT ONLY by the leader
             // in order for the CLI/REST API to work fully.
-            await FetchDhafNodeStatuses();
             _networkConfigurationStatuses = await InspectResultsOfNetworkConfigurationsHealthCheck();
 
             if (_role == DhafNodeRole.Leader)
@@ -685,30 +684,6 @@ namespace Dhaf.Node
 
             var value = JsonSerializer.Serialize(entity, DhafInternalConfig.JsonSerializerOptions);
             await _etcdClient.PutAsync(key, value);
-        }
-
-        public async Task<DcsStatus> GetDcsStatus()
-        {
-            const char SPLIT_CHAR = ',';
-            var nodes = _clusterConfig.Etcd.Hosts
-                .Split(SPLIT_CHAR)
-                .Select(x => x.Trim());
-
-            var dcsStatus = await _etcdClient.StatusASync(new StatusRequest { });
-
-            var nodesCount = nodes.Count();
-            var majority = nodesCount / 2 + 1; // Majority formula: 50% + 1.
-            var failureTolerance = nodesCount - majority;
-
-            var result = new DcsStatus
-            {
-                DcsClusterHealthy = dcsStatus.Errors.Count == 0,
-                FailureTolerance = failureTolerance,
-                Majority = majority,
-                NodesCount = nodesCount,
-            };
-
-            return result;
         }
     }
 
