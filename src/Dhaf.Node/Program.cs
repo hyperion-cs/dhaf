@@ -86,7 +86,7 @@ namespace Dhaf.Node
                         await healthChecker.Instance.Init(hcInitOptions);
                         await switcher.Instance.Init(swInitOptions);
 
-                        var dhafNode = new DhafNode(parsedClusterConfig, dhafInternalConfig,
+                        IDhafNode dhafNode = new DhafNode(parsedClusterConfig, dhafInternalConfig,
                             switcher.Instance, healthChecker.Instance, dhafNodeLogger);
 
                         dhafNodeLogger.LogTrace("[rest api] Init process...");

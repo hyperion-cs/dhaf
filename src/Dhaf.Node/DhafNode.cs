@@ -1,6 +1,5 @@
 ﻿using Dhaf.Core;
 using dotnet_etcd;
-using EmbedIO;
 using Etcdserverpb;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
@@ -18,57 +17,11 @@ namespace Dhaf.Node
     {
         Task<ServiceStatus> GetServiceStatus();
         Task<DhafStatus> GetDhafClusterStatus();
-
-        /// <summary>Checks if a cluster leader exists.</summary>
-        /// <returns>The name of the leader node or null if the cluster leader does not exist.</returns>
-        Task<string> GetLeaderOrDefault();
-
         Task DestroyNode(string name);
-
-        /// <summary>To try to become a cluster leader.</summary>
-        Task<PromotionStatus> TryPromotion();
-
-        /// <summary>Tell the cluster that the current dhaf node is healthy.</summary>
-        Task Heartbeat();
-
-        /// <summary>Shutdown the current cluster node.</summary>
-        Task Shutdown();
-
-        /// <summary>
-        /// Checks the health of all network configurations (both active and others).
-        /// The result (as a set of votes) is sent to DCS.
-        /// </summary>
-        Task NetworkConfigurationsHealthCheck();
-
-        /// <summary>
-        /// Inspects the results of network configuration health checks from all active nodes in the dhaf cluster.
-        /// A vote determines the health of each configuration by majority vote.
-        /// </summary>
-        /// <returns>The status of each network configuration.</returns>
-        Task<IEnumerable<NetworkConfigurationStatus>> InspectResultsOfNetworkConfigurationsHealthCheck();
-
-        /// <summary>
-        /// If any of the nodes have not sent a heartbeat illegally for too long,
-        /// it will be marked as unhealthy in DCS.
-        /// </summary>
-        Task FetchDhafNodeStatuses();
-
-        Task<DecisionOfNetworkConfigurationSwitching> IsAutoSwitchingOfNetworkConfigurationRequired();
-
-        Task<DecisionOfNetworkConfigurationSwitching> IsManualSwitchingOfNetworkConfigurationRequired();
-        Task<string> GetSwitchoverRequirementOrDefault();
-
         Task Switchover(string ncId);
         Task PurgeManualSwitchover();
-
         Task<IEnumerable<SwitchoverCandidate>> GetSwitchoverCandidates();
-
-        /// <summary>
-        /// The dhaf cluster node tact, which does all the necessary things from the node lifecycle.
-        /// </summary>
-        Task Tact();
-
-        Task<bool> IsShutdownRequested();
+        Task TactWithInterval();
     }
 
     public class DhafNode : IDhafNode
@@ -176,7 +129,10 @@ namespace Dhaf.Node
             return new DhafStatus { Leader = _lastKnownLeader, Nodes = nodeStatuses };
         }
 
-        public async Task<string> GetLeaderOrDefault()
+
+        /// <summary>Checks if a cluster leader exists.</summary>
+        /// <returns>The name of the leader node or null if the cluster leader does not exist.</returns>
+        protected async Task<string> GetLeaderOrDefault()
         {
             var leader = await _etcdClient.GetValAsync(_etcdClusterRoot + _dhafInternalConfig.Etcd.LeaderPath);
 
@@ -210,7 +166,7 @@ namespace Dhaf.Node
             _lastKnownLeader = promotionStatus.Leader;
         }
 
-        public async Task<DemotionStatus> TryDemotion()
+        protected async Task<DemotionStatus> TryDemotion()
         {
             var leaderPath = ByteString.CopyFromUtf8(_etcdClusterRoot + _dhafInternalConfig.Etcd.LeaderPath);
             var isCurrentNodeLeader = new Compare
@@ -241,7 +197,9 @@ namespace Dhaf.Node
             }
         }
 
-        public async Task<PromotionStatus> TryPromotion()
+
+        /// <summary>To try to become a cluster leader.</summary>
+        protected async Task<PromotionStatus> TryPromotion()
         {
             const int EMPTY_CREATE_REVISION = 0;
 
@@ -292,7 +250,7 @@ namespace Dhaf.Node
             }
         }
 
-        public async Task HeartbeatWithInterval()
+        protected async Task HeartbeatWithInterval()
         {
             var interval = _clusterConfig.Dhaf.HeartbeatInterval ?? _dhafInternalConfig.DefHeartbeatInterval;
 
@@ -303,7 +261,8 @@ namespace Dhaf.Node
             }
         }
 
-        public async Task Heartbeat()
+        /// <summary>Tell the cluster that the current dhaf node is healthy.</summary>
+        protected async Task Heartbeat()
         {
             if (_role == DhafNodeRole.Leader)
             {
@@ -328,35 +287,11 @@ namespace Dhaf.Node
             _logger.LogTrace("Heartbeat *knock-knock*.");
         }
 
-        public async Task Shutdown()
-        {
-            _logger.LogInformation("Shutdown requested...");
-            _backgroundTasks.HeartbeatWithIntervalCts.Cancel();
-
-            // To be sure that an asynchronous heartbeat does not happen during node shutdown.
-            await _backgroundTasks.HeartbeatWithIntervalTask;
-
-            if (_role == DhafNodeRole.Leader)
-            {
-                await TryDemotion();
-            }
-
-            var nodeKey = _etcdClusterRoot
-                + _dhafInternalConfig.Etcd.NodesPath
-                + _clusterConfig.Dhaf.NodeName;
-
-            var shutdownKey = _etcdClusterRoot
-                + _dhafInternalConfig.Etcd.ShutdownsPath
-                + _clusterConfig.Dhaf.NodeName;
-
-            await _etcdClient.DeleteAsync(nodeKey);
-            await _etcdClient.DeleteAsync(shutdownKey);
-
-            _logger.LogInformation("* Dhaf node exit...");
-            Environment.Exit(0);
-        }
-
-        public async Task NetworkConfigurationsHealthCheck()
+        /// <summary>
+        /// Checks the health of all network configurations (both active and others).
+        /// The result (as a set of votes) is sent to DCS.
+        /// </summary>
+        protected async Task NetworkConfigurationsHealthCheck()
         {
             var tasks = _clusterConfig.Service
                 .NetworkConfigurations
@@ -394,7 +329,14 @@ namespace Dhaf.Node
             }
         }
 
-        public async Task<IEnumerable<NetworkConfigurationStatus>> InspectResultsOfNetworkConfigurationsHealthCheck()
+
+        /// <summary>
+        /// Inspects the results of network configuration health checks from all active nodes in the dhaf cluster.
+        /// A vote determines the health of each configuration by majority vote.
+        /// </summary>
+        /// <returns>The status of each network configuration.</returns>
+        protected async Task<IEnumerable<NetworkConfigurationStatus>>
+            InspectResultsOfNetworkConfigurationsHealthCheck()
         {
             var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
             var healthyNodes = _dhafNodeStatuses
@@ -447,7 +389,11 @@ namespace Dhaf.Node
             return result;
         }
 
-        public async Task FetchDhafNodeStatuses()
+        /// <summary>
+        /// If any of the nodes have not sent a heartbeat illegally for too long,
+        /// it will be marked as unhealthy in DCS.
+        /// </summary>
+        protected async Task FetchDhafNodeStatuses()
         {
             var keyPrefix = _etcdClusterRoot
                 + _dhafInternalConfig.Etcd.NodesPath;
@@ -478,7 +424,8 @@ namespace Dhaf.Node
         /// This is not always failover (e.g. switching to a higher priority network configuration
         /// which has become healthy again).
         /// </summary>
-        public async Task<DecisionOfNetworkConfigurationSwitching> IsAutoSwitchingOfNetworkConfigurationRequired()
+        protected async Task<DecisionOfNetworkConfigurationSwitching>
+            IsAutoSwitchingOfNetworkConfigurationRequired()
         {
             var negativeDecision = new DecisionOfNetworkConfigurationSwitching
             {
@@ -518,7 +465,8 @@ namespace Dhaf.Node
             return negativeDecision;
         }
 
-        public async Task<DecisionOfNetworkConfigurationSwitching> IsManualSwitchingOfNetworkConfigurationRequired()
+        protected async Task<DecisionOfNetworkConfigurationSwitching>
+            IsManualSwitchingOfNetworkConfigurationRequired()
         {
             var key = _etcdClusterRoot
                 + _dhafInternalConfig.Etcd.ManualSwitchingPath;
@@ -555,7 +503,10 @@ namespace Dhaf.Node
             }
         }
 
-        public async Task Tact()
+        /// <summary>
+        /// The dhaf cluster node tact, which does all the necessary things from the node lifecycle.
+        /// </summary>
+        protected async Task Tact()
         {
             _logger.LogTrace("Tact has begun.");
 
@@ -697,26 +648,9 @@ namespace Dhaf.Node
                 }
             }
 
-            var isShutdownRequested = await IsShutdownRequested();
-            if (isShutdownRequested)
-            {
-                await Shutdown();
-            }
-
             _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
             _logger.LogTrace("Tact is over.");
             _logger.LogDebug($"NC is <{_currentNetworkConfigurationId}>.");
-        }
-
-        public async Task<bool> IsShutdownRequested()
-        {
-            var key = _etcdClusterRoot
-                + _dhafInternalConfig.Etcd.ShutdownsPath
-                + _clusterConfig.Dhaf.NodeName;
-
-            var value = await _etcdClient.GetValAsync(key);
-
-            return value == _clusterConfig.Dhaf.NodeName;
         }
 
         public async Task PurgeManualSwitchover()
@@ -727,7 +661,7 @@ namespace Dhaf.Node
             await _etcdClient.DeleteAsync(key);
         }
 
-        public async Task<string> GetSwitchoverRequirementOrDefault()
+        protected async Task<string> GetSwitchoverRequirementOrDefault()
         {
             var key = _etcdClusterRoot
                 + _dhafInternalConfig.Etcd.ManualSwitchingPath;

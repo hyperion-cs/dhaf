@@ -31,7 +31,6 @@ namespace Dhaf.Core
 
         public string NodesPath { get; set; } = "nodes/";
         public string HealthPath { get; set; } = "health/";
-        public string ShutdownsPath { get; set; } = "shutdown/";
         public string ManualSwitchingPath { get; set; } = "manual_switching";
     }
 
