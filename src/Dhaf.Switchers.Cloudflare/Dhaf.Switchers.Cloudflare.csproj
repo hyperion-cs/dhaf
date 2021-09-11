@@ -15,8 +15,14 @@
     </ProjectReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="extension.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <Target Name="CopyExtension" Condition="'$(Configuration)' == 'Debug'" AfterTargets="AfterBuild">
-    <Copy SourceFiles="$(OutDir)\Dhaf.Switchers.Cloudflare.dll;$(OutDir)\Dhaf.Switchers.Cloudflare.deps.json"
+    <Copy SourceFiles="$(OutDir)\Dhaf.Switchers.Cloudflare.dll;$(OutDir)\Dhaf.Switchers.Cloudflare.deps.json;$(OutDir)\extension.json"
           DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net5\extensions\switchers\cloudflare" />
   </Target>
 

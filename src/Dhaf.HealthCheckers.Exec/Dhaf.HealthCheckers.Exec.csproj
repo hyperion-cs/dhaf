@@ -11,8 +11,14 @@
     </ProjectReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="extension.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <Target Name="CopyExtension" Condition="'$(Configuration)' == 'Debug'" AfterTargets="AfterBuild">
-    <Copy SourceFiles="$(OutDir)\Dhaf.HealthCheckers.Exec.dll;$(OutDir)\Dhaf.HealthCheckers.Exec.deps.json"
+    <Copy SourceFiles="$(OutDir)\Dhaf.HealthCheckers.Exec.dll;$(OutDir)\Dhaf.HealthCheckers.Exec.deps.json;$(OutDir)\extension.json"
           DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net5\extensions\health-checkers\exec" />
   </Target>
 
