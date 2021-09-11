@@ -16,7 +16,7 @@ namespace Dhaf.Node
 {
     public interface IDhafNode
     {
-        ServiceStatus ServiceStatus { get; }
+        Task<ServiceStatus> GetServiceStatus();
         Task<DhafStatus> GetDhafStatus();
 
         /// <summary>Checks if a cluster leader exists.</summary>
@@ -83,6 +83,12 @@ namespace Dhaf.Node
         protected DhafNodeRole _role = DhafNodeRole.Follower;
 
         /// <summary>
+        /// The flag shows that all NC is unhealthy.
+        /// The service is DOWN and dhaf is physically unable to fix the situation on its own.
+        /// </summary>
+        protected bool _panicMode = false;
+
+        /// <summary>
         /// The etcd lease identifier for the leader key.
         /// </summary>
         protected long? _leaderLeaseId;
@@ -99,13 +105,28 @@ namespace Dhaf.Node
 
         protected IEnumerable<NetworkConfigurationStatus> _networkConfigurationStatuses;
 
-        public ServiceStatus ServiceStatus => new ServiceStatus
+        public async Task<ServiceStatus> GetServiceStatus()
         {
-            Domain = _clusterConfig.Service.Domain,
-            CurrentNcName = _currentNetworkConfigurationId,
-            NetworkConfigurations = _networkConfigurationStatuses
-                .Select(x => new ServiceNcStatus { Name = x.NcId, Healthy = x.Healthy })
-        };
+            var healthy = _networkConfigurationStatuses
+                .Where(x => x.Healthy)
+                .Select(x => x.NcId)
+                .ToHashSet();
+
+            var ncs = _clusterConfig.Service.NetworkConfigurations
+                .Select((nc, i) => new ServiceNcStatus
+                {
+                    Name = nc.Id,
+                    Priority = i + 1,
+                    Healthy = healthy.Contains(nc.Id)
+                });
+
+            return new ServiceStatus
+            {
+                Domain = _clusterConfig.Service.Domain,
+                CurrentNcName = _currentNetworkConfigurationId,
+                NetworkConfigurations = ncs
+            };
+        }
 
         public DhafNode(ClusterConfig clusterConfig,
             DhafInternalConfig dhafInternalConfig,
@@ -434,6 +455,20 @@ namespace Dhaf.Node
             _dhafNodeStatuses = entities;
         }
 
+        protected async Task<UpdatePanicModeRelevanceResult> UpdatePanicModeRelevance()
+        {
+            var oldValue = _panicMode;
+            var isAnyNcAvailable = _networkConfigurationStatuses
+                .Any(x => x.Healthy);
+
+            _panicMode = !isAnyNcAvailable;
+
+            return new UpdatePanicModeRelevanceResult
+            {
+                HasStatusChanged = _panicMode != oldValue
+            };
+        }
+
         /// <summary>
         /// Determines whether the network configuration should be switched automatically.
         /// This is not always failover (e.g. switching to a higher priority network configuration
@@ -441,9 +476,20 @@ namespace Dhaf.Node
         /// </summary>
         public async Task<DecisionOfNetworkConfigurationSwitching> IsAutoSwitchingOfNetworkConfigurationRequired()
         {
-            var priorityNetConf = _networkConfigurationStatuses.FirstOrDefault(x => x.Healthy);
-            var currentNetConf = _networkConfigurationStatuses.FirstOrDefault(x => x.NcId == _currentNetworkConfigurationId);
+            var negativeDecision = new DecisionOfNetworkConfigurationSwitching
+            {
+                Failover = false,
+                IsRequired = false
+            };
 
+            var priorityNetConf = _networkConfigurationStatuses.FirstOrDefault(x => x.Healthy);
+            if (_panicMode || priorityNetConf == null)
+            {
+                return negativeDecision;
+            }
+
+            var currentNetConf = _networkConfigurationStatuses
+                .FirstOrDefault(x => x.NcId == _currentNetworkConfigurationId);
 
             if (!currentNetConf.Healthy)
             {
@@ -465,7 +511,7 @@ namespace Dhaf.Node
                 };
             }
 
-            return new DecisionOfNetworkConfigurationSwitching { Failover = false, IsRequired = false };
+            return negativeDecision;
         }
 
         public async Task<DecisionOfNetworkConfigurationSwitching> IsManualSwitchingOfNetworkConfigurationRequired()
@@ -558,6 +604,19 @@ namespace Dhaf.Node
 
             if (_role == DhafNodeRole.Leader)
             {
+                var panicModeChanges = await UpdatePanicModeRelevance();
+                if (panicModeChanges.HasStatusChanged)
+                {
+                    if (_panicMode)
+                    {
+                        _logger.LogError("Panic mode is ON. All NCs are unhealthy. The service is DOWN and dhaf is physically unable to fix the situation on its own.");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Panic mode is OFF.");
+                    }
+                }
+
                 _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
                 var autoSwitch = await IsAutoSwitchingOfNetworkConfigurationRequired();
                 var manualSwitch = await IsManualSwitchingOfNetworkConfigurationRequired();

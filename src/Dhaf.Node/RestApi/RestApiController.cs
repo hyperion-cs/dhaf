@@ -55,7 +55,7 @@ namespace Dhaf.Node
         [Route(HttpVerbs.Get, "/service/status")]
         public async Task<RestApiResponse> ServiceStatus()
         {
-            var status = _dhafNode.ServiceStatus;
+            var status = await _dhafNode.GetServiceStatus();
             return new RestApiResponse<ServiceStatus> { Success = true, Data = status };
         }
 

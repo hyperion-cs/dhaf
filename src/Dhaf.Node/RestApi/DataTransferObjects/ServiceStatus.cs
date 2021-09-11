@@ -13,5 +13,6 @@ namespace Dhaf.Node
     {
         public string Name { get; set; }
         public bool Healthy { get; set; }
+        public int Priority { get; set; }
     }
 }
