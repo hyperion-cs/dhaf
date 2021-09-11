@@ -19,7 +19,7 @@ namespace Dhaf.HealthCheckers.Web
         private ClusterServiceConfig _serviceConfig;
 
         public string ExtensionName => "web";
-        public string LoggerSign => $"[{ExtensionName} hc]";
+        public string Sign => $"[{ExtensionName} hc]";
 
         public Type ConfigType => typeof(Config);
         public Type InternalConfigType => typeof(InternalConfig);
@@ -27,7 +27,7 @@ namespace Dhaf.HealthCheckers.Web
         public async Task Init(HealthCheckerInitOptions options)
         {
             _logger = options.Logger;
-            _logger.LogTrace($"{LoggerSign} Init process...");
+            _logger.LogTrace($"{Sign} Init process...");
 
             _config = (Config)options.Config;
             _internalConfig = (InternalConfig)options.InternalConfig;
@@ -39,7 +39,7 @@ namespace Dhaf.HealthCheckers.Web
                 Timeout = _config.Timeout ?? _internalConfig.DefTimeout
             };
 
-            _logger.LogInformation($"{LoggerSign} Init OK.");
+            _logger.LogInformation($"{Sign} Init OK.");
         }
 
         public async Task<HealthStatus> Check(HealthCheckerCheckOptions options)

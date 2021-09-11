@@ -46,7 +46,8 @@ namespace Dhaf.Node
                         dhafNodeLogger.LogInformation($"Configuration file is <{opt.ConfigPath}>.");
 
                         var dhafInternalConfig = new DhafInternalConfig();
-                        var extensionsScope = ExtensionsScopeFactory.GetExtensionsScope(dhafInternalConfig.Extensions);
+                        var extensionsScope = ExtensionsScopeFactory
+                            .GetExtensionsScope(dhafInternalConfig.Extensions);
 
                         var clusterConfigParser = new ClusterConfigParser(opt.ConfigPath, extensionsScope);
                         var parsedClusterConfig = await clusterConfigParser.Parse();
@@ -109,8 +110,7 @@ namespace Dhaf.Node
             }
             catch (Exception ex)
             {
-                logger.Error(ex, "Stopped program because of exception.");
-                throw;
+                logger.Fatal(ex, "Further work of the node is impossible because of a fatal error.");
             }
             finally
             {

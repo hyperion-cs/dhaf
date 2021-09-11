@@ -23,12 +23,12 @@ namespace Dhaf.HealthCheckers.Exec
         public Type ConfigType => typeof(Config);
         public Type InternalConfigType => typeof(InternalConfig);
 
-        public string LoggerSign => $"[{ExtensionName} hc]";
+        public string Sign => $"[{ExtensionName} hc]";
 
         public async Task Init(HealthCheckerInitOptions options)
         {
             _logger = options.Logger;
-            _logger.LogTrace($"{LoggerSign} Init process...");
+            _logger.LogTrace($"{Sign} Init process...");
 
             _config = (Config)options.Config;
             _internalConfig = (InternalConfig)options.InternalConfig;
@@ -38,12 +38,13 @@ namespace Dhaf.HealthCheckers.Exec
 
             if (!execResults.Success || execResults.ExitCode != 0)
             {
-                throw new Exception($"{LoggerSign} Init failed.");
+                _logger.LogCritical($"{Sign} The executable initialization file returned a non-zero return code.");
+                throw new ExtensionInitFailedException(Sign);
             }
 
-            _logger.LogDebug($"{LoggerSign} Init output: <{execResults.Output}>");
-            _logger.LogDebug($"{LoggerSign} Init total exec time: {execResults.TotalExecuteTime} ms.");
-            _logger.LogInformation($"{LoggerSign} Init OK.");
+            _logger.LogDebug($"{Sign} Init output: <{execResults.Output}>");
+            _logger.LogDebug($"{Sign} Init total exec time: {execResults.TotalExecuteTime} ms.");
+            _logger.LogInformation($"{Sign} Init OK.");
         }
 
         public async Task<HealthStatus> Check(HealthCheckerCheckOptions options)

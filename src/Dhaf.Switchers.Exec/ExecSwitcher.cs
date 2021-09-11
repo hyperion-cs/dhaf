@@ -21,7 +21,7 @@ namespace Dhaf.Switchers.Exec
         public Type ConfigType => typeof(Config);
         public Type InternalConfigType => typeof(InternalConfig);
 
-        public string LoggerSign => $"[{ExtensionName} sw]";
+        public string Sign => $"[{ExtensionName} sw]";
 
         public async Task<string> GetCurrentNetworkConfigurationId()
         {
@@ -31,7 +31,7 @@ namespace Dhaf.Switchers.Exec
         public async Task Init(SwitcherInitOptions options)
         {
             _logger = options.Logger;
-            _logger.LogTrace($"{LoggerSign} Init process...");
+            _logger.LogTrace($"{Sign} Init process...");
 
             _config = (Config)options.Config;
             _internalConfig = (InternalConfig)options.InternalConfig;
@@ -41,38 +41,40 @@ namespace Dhaf.Switchers.Exec
 
             if (!execResults.Success || execResults.ExitCode != 0)
             {
-                throw new Exception($"{LoggerSign} Init failed.");
+                _logger.LogCritical($"{Sign} The executable initialization file returned a non-zero return code.");
+                throw new ExtensionInitFailedException(Sign);
             }
 
-            _logger.LogDebug($"{LoggerSign} Init output: <{execResults.Output}>");
-            _logger.LogDebug($"{LoggerSign} Init total exec time: {execResults.TotalExecuteTime} ms.");
+            _logger.LogDebug($"{Sign} Init output: <{execResults.Output}>");
+            _logger.LogDebug($"{Sign} Init total exec time: {execResults.TotalExecuteTime} ms.");
 
             // The exec switcher MUST return the ID of the current network configuration
             // if it initializes successfully.
             var currentNcId = execResults.Output.Trim();
             _currentNetworkConfigurationId = currentNcId;
 
-            _logger.LogInformation($"{LoggerSign} Init OK.");
+            _logger.LogInformation($"{Sign} Init OK.");
         }
 
         public async Task Switch(SwitcherSwitchOptions options)
         {
             var nc = _serviceConfig.NetworkConfigurations.FirstOrDefault(x => x.Id == options.NcId);
-            _logger.LogInformation($"{LoggerSign} Switch to NC <{nc.Id}> requested...");
+            _logger.LogInformation($"{Sign} Switch to NC <{nc.Id}> requested...");
 
             var args = $"{nc.Id} {nc.IP}";
             var execResults = Shell.Exec(_config.Switch, args);
 
             if (!execResults.Success || execResults.ExitCode != 0)
             {
-                throw new Exception($"{LoggerSign} Switch failed.");
+                _logger.LogCritical($"{Sign} The executable for the switch returned a non-zero return code.");
+                throw new SwitchFailedException(Sign);
             }
 
-            _logger.LogTrace($"{LoggerSign} Switch output: <{execResults.Output}>");
-            _logger.LogTrace($"{LoggerSign} Switch total exec time: {execResults.TotalExecuteTime} ms.");
+            _logger.LogTrace($"{Sign} Switch output: <{execResults.Output}>");
+            _logger.LogTrace($"{Sign} Switch total exec time: {execResults.TotalExecuteTime} ms.");
 
             _currentNetworkConfigurationId = nc.Id;
-            _logger.LogInformation($"{LoggerSign} Successfully switched to NC <{nc.Id}>.");
+            _logger.LogInformation($"{Sign} Successfully switched to NC <{nc.Id}>.");
         }
     }
 }

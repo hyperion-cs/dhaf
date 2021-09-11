@@ -21,7 +21,7 @@ namespace Dhaf.Switchers.Cloudflare
         protected string _currentNetworkConfigurationId;
 
         public string ExtensionName => "cloudflare";
-        public string LoggerSign => $"[{ExtensionName} sw]";
+        public string Sign => $"[{ExtensionName} sw]";
 
         public Type ConfigType => typeof(Config);
         public Type InternalConfigType => typeof(InternalConfig);
@@ -29,7 +29,7 @@ namespace Dhaf.Switchers.Cloudflare
         public async Task Init(SwitcherInitOptions options)
         {
             _logger = options.Logger;
-            _logger.LogTrace($"{LoggerSign} Init process...");
+            _logger.LogTrace($"{Sign} Init process...");
 
             _config = (Config)options.Config;
             _internalConfig = (InternalConfig)options.InternalConfig;
@@ -37,44 +37,48 @@ namespace Dhaf.Switchers.Cloudflare
 
             _client = new RestClient(_internalConfig.BaseUrl);
 
+            await AssertToken();
+
             var zone = await GetZoneOrDefault(_config.Zone);
 
-            if (zone == null)
+            if (zone is null)
             {
-                throw new Exception($"The zone <{_config.Zone}> was not found in Cloudflare.");
+                _logger.LogCritical($"{Sign} The zone <{_config.Zone}> is not found in Cloudflare.");
+                throw new ExtensionInitFailedException(Sign);
             }
 
             if (zone.Status != "active" || zone.Paused)
             {
-                throw new Exception($"The zone <{_config.Zone}> is not active and/or paused in Cloudflare.");
+                _logger.LogCritical($"The zone <{_config.Zone}> is not active and/or paused in Cloudflare.");
+                throw new ExtensionInitFailedException(Sign);
             }
 
             _zoneId = zone.Id;
-            _logger.LogDebug($"{LoggerSign} Zone <{_config.Zone}> id: {_zoneId}");
+            _logger.LogDebug($"{Sign} Zone <{_config.Zone}> id: {_zoneId}");
 
             var dnsRecords = await GetDnsRecords(_zoneId, _serviceConfig.Domain, "A");
-
             if (dnsRecords.Result.Count > 1)
             {
-                throw new Exception($"The <{_serviceConfig.Domain}> domain name has more than one <A> record.");
+                _logger.LogCritical($"The <{_serviceConfig.Domain}> domain name has more than one <A> record.");
+                throw new ExtensionInitFailedException(Sign);
             }
 
             var dnsRecord = dnsRecords.Result.FirstOrDefault();
             if (dnsRecord == null)
             {
-                _logger.LogWarning($"{LoggerSign} The <{_serviceConfig.Domain}> domain name has no <A> record.\nAutomatically insert the necessary <A> record...");
+                _logger.LogWarning($"{Sign} The <{_serviceConfig.Domain}> domain name has no <A> record.\nAutomatically insert the necessary <A> record...");
 
                 var primaryNC = _serviceConfig.NetworkConfigurations.FirstOrDefault();
                 var addRecordResponse = await CreateDnsRecord(_zoneId, _serviceConfig.Domain, "A", primaryNC.IP);
 
                 if (!addRecordResponse.Success)
                 {
-                    _logger.LogError($"{LoggerSign} Failed to automatically add an <A> record for the domain <{_serviceConfig.Domain}>.");
+                    _logger.LogCritical($"{Sign} Failed to automatically add an <A> record for the domain <{_serviceConfig.Domain}>.");
 
-                    throw new Exception($"Failed to automatically add an <A> record for the domain <{_serviceConfig.Domain}>.");
+                    throw new ExtensionInitFailedException(Sign);
                 }
 
-                _logger.LogInformation($"{LoggerSign} <A> record for the domain <{_serviceConfig.Domain}> has been successfully added.");
+                _logger.LogInformation($"{Sign} <A> record for the domain <{_serviceConfig.Domain}> has been successfully added.");
 
                 dnsRecord = addRecordResponse.Result;
                 _currentNetworkConfigurationId = primaryNC.Id;
@@ -84,7 +88,7 @@ namespace Dhaf.Switchers.Cloudflare
                 var currentNC = _serviceConfig.NetworkConfigurations.FirstOrDefault(x => x.IP == dnsRecord.Content);
                 if (currentNC == null)
                 {
-                    _logger.LogWarning($"{LoggerSign} <A> record for the domain <{_serviceConfig.Domain}> contains an unknown IP address. Automatic replacement with the highest-priority IP...");
+                    _logger.LogWarning($"{Sign} <A> record for the domain <{_serviceConfig.Domain}> contains an unknown IP address. Automatic replacement with the highest-priority IP...");
 
                     var primaryNC = _serviceConfig.NetworkConfigurations.FirstOrDefault();
                     await EditDnsRecord(_zoneId, _dnsRecordAId, "A", _serviceConfig.Domain, primaryNC.IP);
@@ -98,27 +102,44 @@ namespace Dhaf.Switchers.Cloudflare
 
             if (!dnsRecord.Proxied)
             {
-                throw new Exception($"<A> record for the domain <{_serviceConfig.Domain}> is not proxied through cloudflare.");
+                _logger.LogCritical($"<A> record for the domain <{_serviceConfig.Domain}> is not proxied through cloudflare.");
+
+                throw new ExtensionInitFailedException(Sign);
             }
 
             _dnsRecordAId = dnsRecord.Id;
 
-            _logger.LogDebug($"{LoggerSign} <A> record for the domain <{_serviceConfig.Domain}> id: {_dnsRecordAId}");
-            _logger.LogInformation($"{LoggerSign} Init OK.");
+            _logger.LogDebug($"{Sign} <A> record for the domain <{_serviceConfig.Domain}> id: {_dnsRecordAId}");
+            _logger.LogInformation($"{Sign} Init OK.");
         }
 
         public async Task Switch(SwitcherSwitchOptions options)
         {
             var nc = _serviceConfig.NetworkConfigurations.FirstOrDefault(x => x.Id == options.NcId);
 
-            _logger.LogInformation($"{LoggerSign} Switch to NC <{nc.Id}> requested...");
-            _logger.LogDebug($"{LoggerSign} Failover: {options.Failover}");
-            _logger.LogDebug($"{LoggerSign} New IP: {nc.IP}");
+            _logger.LogInformation($"{Sign} Switch to NC <{nc.Id}> requested...");
+            _logger.LogDebug($"{Sign} Failover: {options.Failover}");
+            _logger.LogDebug($"{Sign} New IP: {nc.IP}");
 
             await EditDnsRecord(_zoneId, _dnsRecordAId, "A", _serviceConfig.Domain, nc.IP);
             _currentNetworkConfigurationId = nc.Id;
 
-            _logger.LogInformation($"{LoggerSign} Successfully switched to NC <{nc.Id}>.");
+            _logger.LogInformation($"{Sign} Successfully switched to NC <{nc.Id}>.");
+        }
+
+        protected async Task AssertToken()
+        {
+            var request = new RestRequest($"zones");
+            request.AddHeader("Authorization", $"Bearer {_config.ApiToken}");
+            var response = await _client.GetAsync<ResultDto<string>>(request);
+
+            if (response.Errors.Any())
+            {
+                var error = response.Errors.First();
+                _logger.LogCritical($"{Sign} Error {error.Code}: {error.Message}.");
+
+                throw new ExtensionInitFailedException(Sign);
+            }
         }
 
         protected async Task<ZoneDto> GetZoneOrDefault(string zoneName)
@@ -164,11 +185,11 @@ namespace Dhaf.Switchers.Cloudflare
 
             if (!response.Success)
             {
-                _logger.LogError($"{LoggerSign} Failed to update an <{type}> record for the domain {domainName}.");
-                throw new Exception($"Failed to update an <{type}> record for the domain {domainName}.");
+                _logger.LogError($"{Sign} Failed to update an <{type}> record for the domain {domainName}.");
+                throw new SwitchFailedException(Sign);
             }
 
-            _logger.LogDebug($"{LoggerSign} <{type}> record for the domain {domainName} has been successfully updated.");
+            _logger.LogDebug($"{Sign} <{type}> record for the domain {domainName} has been successfully updated.");
         }
 
         public async Task<string> GetCurrentNetworkConfigurationId()
