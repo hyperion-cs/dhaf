@@ -96,6 +96,8 @@ namespace Dhaf.Node
 
         public async Task<ServiceStatus> GetServiceStatus()
         {
+            var switchoverRequirement = await GetSwitchoverRequirementOrDefault();
+
             var healthy = _networkConfigurationStatuses
                 .Where(x => x.Healthy)
                 .Select(x => x.NcId)
@@ -113,7 +115,8 @@ namespace Dhaf.Node
             {
                 Domain = _clusterConfig.Service.Domain,
                 CurrentNcName = _currentNetworkConfigurationId,
-                NetworkConfigurations = ncs
+                NetworkConfigurations = ncs,
+                SwitchoverRequirement = switchoverRequirement
             };
         }
 

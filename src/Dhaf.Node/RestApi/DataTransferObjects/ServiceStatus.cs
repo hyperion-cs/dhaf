@@ -7,6 +7,7 @@ namespace Dhaf.Node
         public string Domain { get; set; }
         public string CurrentNcName { get; set; }
         public IEnumerable<ServiceNcStatus> NetworkConfigurations { get; set; }
+        public string SwitchoverRequirement { get; set; }
     }
 
     public class ServiceNcStatus

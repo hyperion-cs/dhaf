@@ -15,10 +15,17 @@ namespace Dhaf.Core
         public string Path { get; set; }
         public ExtensionsScope ExtensionsScope { get; set; }
 
+        public ClusterConfigParser(string path)
+        {
+            Path = path;
+        }
+
         public ClusterConfigParser(string path, ExtensionsScope extensionsScope)
         {
             Path = path;
-            ExtensionsScope = extensionsScope;
+
+            ExtensionsScope = extensionsScope
+                ?? throw new Exception("Extensions scope cannot be null when using the current constructor.");
         }
 
         public async Task<ClusterConfig> Parse()
@@ -35,6 +42,13 @@ namespace Dhaf.Core
 
             var configYaml = await File.ReadAllTextAsync(Path, DhafInternalConfig.ConfigsEncoding);
             var firstPhase = GetDeserializer(defaultMap).Deserialize<ClusterConfig>(configYaml);
+
+            if (ExtensionsScope == null)
+            {
+                // A constructor without extensions scope was used,
+                // therefore, the first phase of deserialization is sufficient.
+                return firstPhase;
+            }
 
             var switcher = ExtensionsScope.Switchers
                 .FirstOrDefault(x => x.Instance.ExtensionName == firstPhase.Switcher.ExtensionName);
