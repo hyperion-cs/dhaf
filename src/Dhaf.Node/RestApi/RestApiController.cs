@@ -32,7 +32,7 @@ namespace Dhaf.Node
         }
 
         [Route(HttpVerbs.Get, "/switchover")]
-        public async Task<RestApiResponse> Switchover([QueryField] string ncId)
+        public async Task<RestApiResponse> Switchover([QueryField(true)] string ncId)
         {
             await _dhafNode.Switchover(ncId);
             return new RestApiResponse { Success = true };
@@ -62,8 +62,15 @@ namespace Dhaf.Node
         [Route(HttpVerbs.Get, "/dhaf/status")]
         public async Task<RestApiResponse> DhafStatus()
         {
-            var status = await _dhafNode.GetDhafStatus();
+            var status = await _dhafNode.GetDhafClusterStatus();
             return new RestApiResponse<DhafStatus> { Success = true, Data = status };
+        }
+
+        [Route(HttpVerbs.Get, "/dhaf/node/destroy")]
+        public async Task<RestApiResponse> DhafNodeDestroy([QueryField(true)] string name)
+        {
+            await _dhafNode.DestroyNode(name);
+            return new RestApiResponse { Success = true };
         }
     }
 }

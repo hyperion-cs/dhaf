@@ -35,6 +35,30 @@ namespace Dhaf.Node
                     m => m.WithController(() => new RestApiController(dhafNode, logger))
             );
 
+            server.HandleUnhandledException(async (context, exception) =>
+            {
+                context.Response.StatusCode = 500;
+                var errors = new List<RestApiError>()
+                {
+                    new RestApiError { Code = -1, Message = "Internal error." }
+                };
+
+                if (exception is RestApiException restApiExp)
+                {
+                    context.Response.StatusCode = 400;
+                    errors = new List<RestApiError>()
+                    {
+                        new RestApiError { Code = restApiExp.Code, Message = restApiExp.Message }
+                    };
+                }
+
+                await context.SendDataAsync(SerializationCallback, new RestApiResponse
+                {
+                    Success = false,
+                    Errors = errors
+                });
+            });
+
             server.HandleHttpException(async (context, exception) =>
             {
                 context.Response.StatusCode = 400;
