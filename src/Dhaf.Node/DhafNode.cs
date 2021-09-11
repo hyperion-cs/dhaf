@@ -15,13 +15,16 @@ namespace Dhaf.Node
 {
     public interface IDhafNode
     {
+        Task TactWithInterval();
+
         Task<ServiceStatus> GetServiceStatus();
         Task<DhafStatus> GetDhafClusterStatus();
-        Task DestroyNode(string name);
+
+        Task DestroyDhafNode(string name);
+
         Task Switchover(string ncId);
-        Task PurgeManualSwitchover();
+        Task PurgeSwitchover();
         Task<IEnumerable<SwitchoverCandidate>> GetSwitchoverCandidates();
-        Task TactWithInterval();
     }
 
     public class DhafNode : IDhafNode
@@ -49,18 +52,17 @@ namespace Dhaf.Node
         /// The etcd lease identifier for the leader key.
         /// </summary>
         protected long? _leaderLeaseId;
+
         protected string _lastKnownLeader;
         protected string _currentNetworkConfigurationId;
 
         protected ClusterConfig _clusterConfig;
         protected DhafInternalConfig _dhafInternalConfig;
 
-        protected string _etcdClusterRoot { get => $"/{_clusterConfig.Dhaf.ClusterName}/"; }
-
-        protected Dictionary<string, EtcdNodeStatus> _dhafNodeStatuses
-            = new Dictionary<string, EtcdNodeStatus>();
-
+        protected Dictionary<string, EtcdNodeStatus> _dhafNodeStatuses = new();
         protected IEnumerable<NetworkConfigurationStatus> _networkConfigurationStatuses;
+
+        protected string _etcdClusterRoot { get => $"/{_clusterConfig.Dhaf.ClusterName}/"; }
 
         public DhafNode(ClusterConfig clusterConfig,
             DhafInternalConfig dhafInternalConfig,
@@ -129,6 +131,241 @@ namespace Dhaf.Node
             return new DhafStatus { Leader = _lastKnownLeader, Nodes = nodeStatuses };
         }
 
+        public async Task DestroyDhafNode(string name)
+        {
+            var dhafStatus = await GetDhafClusterStatus();
+            var node = dhafStatus.Nodes.FirstOrDefault(x => x.Name == name);
+
+            if (node is null)
+            {
+                throw new RestApiException(1201, "There is no dhaf node with this name.");
+            }
+
+            if (node.Healthy)
+            {
+                throw new RestApiException(1202, "You cannot destroy a healthy dhaf node. Turn it off and try again.");
+            }
+
+            var nodeStatusPrefix = _etcdClusterRoot
+                + _dhafInternalConfig.Etcd.NodesPath;
+
+            var serviceStatusPrefix = _etcdClusterRoot
+                + _dhafInternalConfig.Etcd.HealthPath;
+
+            await _etcdClient.DeleteAsync(nodeStatusPrefix + node.Name);
+            await _etcdClient.DeleteRangeAsync(serviceStatusPrefix + node.Name);
+        }
+
+        public async Task Switchover(string ncId)
+        {
+            var ncStatus = _networkConfigurationStatuses.FirstOrDefault(x => x.NcId == ncId);
+
+            if (ncStatus == null)
+            {
+                throw new RestApiException(1101, "There is no network configuration with this ID.");
+            }
+
+            if (!ncStatus.Healthy)
+            {
+                throw new RestApiException(1102, "Cannot switchover to the specified network configuration because it is unhealthy.");
+            }
+
+            await PurgeSwitchover();
+
+            var key = _etcdClusterRoot
+                + _dhafInternalConfig.Etcd.ManualSwitchingPath;
+
+            var entity = new EtcdManualSwitching
+            {
+                NCId = ncId,
+                DhafNode = _clusterConfig.Dhaf.NodeName
+            };
+
+            var value = JsonSerializer.Serialize(entity, DhafInternalConfig.JsonSerializerOptions);
+            await _etcdClient.PutAsync(key, value);
+        }
+
+        public async Task PurgeSwitchover()
+        {
+            var key = _etcdClusterRoot
+                + _dhafInternalConfig.Etcd.ManualSwitchingPath;
+
+            await _etcdClient.DeleteAsync(key);
+        }
+
+        public async Task<IEnumerable<SwitchoverCandidate>> GetSwitchoverCandidates()
+        {
+            var healthyNodes = _networkConfigurationStatuses
+                .Where(x => x.Healthy)
+                .Select(x => x.NcId);
+
+            var candidates = _clusterConfig.Service.NetworkConfigurations
+                .Select((nc, i) => new SwitchoverCandidate { Name = nc.Id, Priority = i + 1 })
+                .Where(nc => healthyNodes.Contains(nc.Name));
+
+            return candidates;
+        }
+
+        public async Task TactWithInterval()
+        {
+            var interval = _clusterConfig.Dhaf.TactInterval ?? _dhafInternalConfig.DefTactInterval;
+
+            while (true)
+            {
+                await Tact();
+                await Task.Delay(TimeSpan.FromSeconds(interval));
+            }
+        }
+
+        /// <summary>
+        /// The dhaf cluster node tact, which does all the necessary things from the node lifecycle.
+        /// </summary>
+        protected async Task Tact()
+        {
+            _logger.LogTrace("Tact has begun.");
+
+            if (_role == DhafNodeRole.Leader)
+            {
+                _logger.LogDebug($"NC is <{_currentNetworkConfigurationId}>.");
+            }
+
+            if (_role == DhafNodeRole.Follower)
+            {
+                var leader = await GetLeaderOrDefault();
+
+                if (leader == _clusterConfig.Dhaf.NodeName)
+                {
+                    // We are leaders, but for some reason we don't know about it.
+                    // This is not normal.
+
+                    _logger.LogWarning("Mismatch between the role of the current node in the local (follower) and remote (leader) storages. Try demotion...");
+
+                    var demotionStatus = await TryDemotion();
+                    if (demotionStatus.Success)
+                    {
+                        leader = null;
+                    }
+                    else
+                    {
+                        // Someone has already taken the leader's seat.
+                        leader = demotionStatus.Leader;
+                    }
+                }
+
+                if (leader == null)
+                {
+                    await ParticipateInLeaderElection();
+                }
+
+                if (leader != null && _lastKnownLeader != leader)
+                {
+                    _logger.LogInformation($"<{leader}> is now the leader.");
+                    _lastKnownLeader = leader;
+                }
+            }
+
+            await FetchDhafNodeStatuses();
+            await NetworkConfigurationsHealthCheck();
+
+            // The following task need to be performed NOT ONLY by the leader
+            // in order for the CLI/REST API to work fully.
+            _networkConfigurationStatuses = await InspectResultsOfNetworkConfigurationsHealthCheck();
+
+            if (_role == DhafNodeRole.Leader)
+            {
+                var panicModeChanges = await UpdatePanicModeRelevance();
+                if (panicModeChanges.HasStatusChanged)
+                {
+                    if (_panicMode)
+                    {
+                        _logger.LogError("Panic mode is ON. All NCs are unhealthy. The service is DOWN and dhaf is physically unable to fix the situation on its own.");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Panic mode is OFF.");
+                    }
+                }
+
+                _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
+                var autoSwitch = await IsAutoSwitchingOfNetworkConfigurationRequired();
+                var manualSwitch = await IsManualSwitchingOfNetworkConfigurationRequired();
+
+                var mustSwitchover = manualSwitch.IsRequired && !autoSwitch.Failover;
+
+                var switchoverRequirement = await GetSwitchoverRequirementOrDefault();
+
+                if (!mustSwitchover && switchoverRequirement != _switchoverLastRequirement)
+                {
+                    if (switchoverRequirement is null)
+                    {
+                        _logger.LogInformation("The switchover requirement are purged.");
+                    }
+                    else
+                    {
+                        _logger.LogInformation($"There is switchover requirement to <{switchoverRequirement}>. No action is taken because the current configuration is already so.");
+                    }
+                }
+
+                _switchoverLastRequirement = switchoverRequirement;
+
+                var mustAutoSwitchover = autoSwitch.IsRequired
+                    && !autoSwitch.Failover && switchoverRequirement == null;
+
+                if (autoSwitch.Failover)
+                {
+                    _logger.LogWarning($"Current NC <{_currentNetworkConfigurationId}> is DOWN. A failover has been started...");
+
+                    if (switchoverRequirement != null)
+                    {
+                        _logger.LogWarning("Purge switchover requirement because failover is required...");
+                        await PurgeSwitchover();
+                    }
+
+                    await _switcher.Switch(new SwitcherSwitchOptions
+                    {
+                        NcId = autoSwitch.SwitchTo,
+                        Failover = autoSwitch.Failover
+                    });
+                }
+                if (mustSwitchover)
+                {
+                    var proposedHost = _networkConfigurationStatuses
+                        .FirstOrDefault(x => x.NcId == manualSwitch.SwitchTo);
+
+                    if (proposedHost.Healthy)
+                    {
+                        _logger.LogInformation("Switchover is requested...");
+                        await _switcher.Switch(new SwitcherSwitchOptions
+                        {
+                            NcId = manualSwitch.SwitchTo,
+                            Failover = manualSwitch.Failover
+                        });
+                    }
+                    else
+                    {
+                        _logger.LogError($"Swithover is requested but it is not possible because the specified network configuration <{manualSwitch.SwitchTo}> is unhealthy. The requirement to switchover will be purged.");
+
+                        await PurgeSwitchover();
+                        mustAutoSwitchover = autoSwitch.IsRequired && !autoSwitch.Failover;
+                    }
+                }
+
+                if (mustAutoSwitchover)
+                {
+                    _logger.LogInformation($"Switching to a higher priority healthy NC <{autoSwitch.SwitchTo}>...");
+
+                    await _switcher.Switch(new SwitcherSwitchOptions
+                    {
+                        NcId = autoSwitch.SwitchTo,
+                        Failover = autoSwitch.Failover
+                    });
+                }
+            }
+
+            _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
+            _logger.LogTrace("Tact is over.");
+            _logger.LogDebug($"NC is <{_currentNetworkConfigurationId}>.");
+        }
 
         /// <summary>Checks if a cluster leader exists.</summary>
         /// <returns>The name of the leader node or null if the cluster leader does not exist.</returns>
@@ -196,7 +433,6 @@ namespace Dhaf.Node
                 return new DemotionStatus { Success = false, Leader = leader };
             }
         }
-
 
         /// <summary>To try to become a cluster leader.</summary>
         protected async Task<PromotionStatus> TryPromotion()
@@ -328,7 +564,6 @@ namespace Dhaf.Node
                 _logger.LogWarning($"NC <{nc.Id}> status: Unhealthy.");
             }
         }
-
 
         /// <summary>
         /// Inspects the results of network configuration health checks from all active nodes in the dhaf cluster.
@@ -492,175 +727,6 @@ namespace Dhaf.Node
             return new DecisionOfNetworkConfigurationSwitching { Failover = false, IsRequired = false };
         }
 
-        public async Task TactWithInterval()
-        {
-            var interval = _clusterConfig.Dhaf.TactInterval ?? _dhafInternalConfig.DefTactInterval;
-
-            while (true)
-            {
-                await Tact();
-                await Task.Delay(TimeSpan.FromSeconds(interval));
-            }
-        }
-
-        /// <summary>
-        /// The dhaf cluster node tact, which does all the necessary things from the node lifecycle.
-        /// </summary>
-        protected async Task Tact()
-        {
-            _logger.LogTrace("Tact has begun.");
-
-            if (_role == DhafNodeRole.Leader)
-            {
-                _logger.LogDebug($"NC is <{_currentNetworkConfigurationId}>.");
-            }
-
-            if (_role == DhafNodeRole.Follower)
-            {
-                var leader = await GetLeaderOrDefault();
-
-                if (leader == _clusterConfig.Dhaf.NodeName)
-                {
-                    // We are leaders, but for some reason we don't know about it.
-                    // This is not normal.
-
-                    _logger.LogWarning("Mismatch between the role of the current node in the local (follower) and remote (leader) storages. Try demotion...");
-
-                    var demotionStatus = await TryDemotion();
-                    if (demotionStatus.Success)
-                    {
-                        leader = null;
-                    }
-                    else
-                    {
-                        // Someone has already taken the leader's seat.
-                        leader = demotionStatus.Leader;
-                    }
-                }
-
-                if (leader == null)
-                {
-                    await ParticipateInLeaderElection();
-                }
-
-                if (leader != null && _lastKnownLeader != leader)
-                {
-                    _logger.LogInformation($"<{leader}> is now the leader.");
-                    _lastKnownLeader = leader;
-                }
-            }
-
-            await FetchDhafNodeStatuses();
-            await NetworkConfigurationsHealthCheck();
-
-            // The following task need to be performed NOT ONLY by the leader
-            // in order for the CLI/REST API to work fully.
-            _networkConfigurationStatuses = await InspectResultsOfNetworkConfigurationsHealthCheck();
-
-            if (_role == DhafNodeRole.Leader)
-            {
-                var panicModeChanges = await UpdatePanicModeRelevance();
-                if (panicModeChanges.HasStatusChanged)
-                {
-                    if (_panicMode)
-                    {
-                        _logger.LogError("Panic mode is ON. All NCs are unhealthy. The service is DOWN and dhaf is physically unable to fix the situation on its own.");
-                    }
-                    else
-                    {
-                        _logger.LogInformation("Panic mode is OFF.");
-                    }
-                }
-
-                _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
-                var autoSwitch = await IsAutoSwitchingOfNetworkConfigurationRequired();
-                var manualSwitch = await IsManualSwitchingOfNetworkConfigurationRequired();
-
-                var mustSwitchover = manualSwitch.IsRequired && !autoSwitch.Failover;
-
-                var switchoverRequirement = await GetSwitchoverRequirementOrDefault();
-
-                if (!mustSwitchover && switchoverRequirement != _switchoverLastRequirement)
-                {
-                    if (switchoverRequirement is null)
-                    {
-                        _logger.LogInformation("The switchover requirement are purged.");
-                    }
-                    else
-                    {
-                        _logger.LogInformation($"There is switchover requirement to <{switchoverRequirement}>. No action is taken because the current configuration is already so.");
-                    }
-                }
-
-                _switchoverLastRequirement = switchoverRequirement;
-
-                var mustAutoSwitchover = autoSwitch.IsRequired
-                    && !autoSwitch.Failover && switchoverRequirement == null;
-
-                if (autoSwitch.Failover)
-                {
-                    _logger.LogWarning($"Current NC <{_currentNetworkConfigurationId}> is DOWN. A failover has been started...");
-
-                    if (switchoverRequirement != null)
-                    {
-                        _logger.LogWarning("Purge switchover requirement because failover is required...");
-                        await PurgeManualSwitchover();
-                    }
-
-                    await _switcher.Switch(new SwitcherSwitchOptions
-                    {
-                        NcId = autoSwitch.SwitchTo,
-                        Failover = autoSwitch.Failover
-                    });
-                }
-                if (mustSwitchover)
-                {
-                    var proposedHost = _networkConfigurationStatuses
-                        .FirstOrDefault(x => x.NcId == manualSwitch.SwitchTo);
-
-                    if (proposedHost.Healthy)
-                    {
-                        _logger.LogInformation("Switchover is requested...");
-                        await _switcher.Switch(new SwitcherSwitchOptions
-                        {
-                            NcId = manualSwitch.SwitchTo,
-                            Failover = manualSwitch.Failover
-                        });
-                    }
-                    else
-                    {
-                        _logger.LogError($"Swithover is requested but it is not possible because the specified network configuration <{manualSwitch.SwitchTo}> is unhealthy. The requirement to switchover will be purged.");
-
-                        await PurgeManualSwitchover();
-                        mustAutoSwitchover = autoSwitch.IsRequired && !autoSwitch.Failover;
-                    }
-                }
-
-                if (mustAutoSwitchover)
-                {
-                    _logger.LogInformation($"Switching to a higher priority healthy NC <{autoSwitch.SwitchTo}>...");
-
-                    await _switcher.Switch(new SwitcherSwitchOptions
-                    {
-                        NcId = autoSwitch.SwitchTo,
-                        Failover = autoSwitch.Failover
-                    });
-                }
-            }
-
-            _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
-            _logger.LogTrace("Tact is over.");
-            _logger.LogDebug($"NC is <{_currentNetworkConfigurationId}>.");
-        }
-
-        public async Task PurgeManualSwitchover()
-        {
-            var key = _etcdClusterRoot
-                + _dhafInternalConfig.Etcd.ManualSwitchingPath;
-
-            await _etcdClient.DeleteAsync(key);
-        }
-
         protected async Task<string> GetSwitchoverRequirementOrDefault()
         {
             var key = _etcdClusterRoot
@@ -678,81 +744,14 @@ namespace Dhaf.Node
             return value.NCId;
         }
 
-        public async Task Switchover(string ncId)
+        /// <summary>
+        /// Background tasks that should not be expected to complete via await. These are infinite loops.
+        /// </summary>
+        public class DhafNodeBackgroundTasks
         {
-            var ncStatus = _networkConfigurationStatuses.FirstOrDefault(x => x.NcId == ncId);
-
-            if (ncStatus == null)
-            {
-                throw new RestApiException(1101, "There is no network configuration with this ID.");
-            }
-
-            if (!ncStatus.Healthy)
-            {
-                throw new RestApiException(1102, "Cannot switchover to the specified network configuration because it is unhealthy.");
-            }
-
-            await PurgeManualSwitchover();
-
-            var key = _etcdClusterRoot
-                + _dhafInternalConfig.Etcd.ManualSwitchingPath;
-
-            var entity = new EtcdManualSwitching
-            {
-                NCId = ncId,
-                DhafNode = _clusterConfig.Dhaf.NodeName
-            };
-
-            var value = JsonSerializer.Serialize(entity, DhafInternalConfig.JsonSerializerOptions);
-            await _etcdClient.PutAsync(key, value);
+            public Task HeartbeatWithIntervalTask { get; set; }
+            public CancellationTokenSource HeartbeatWithIntervalCts { get; set; }
+                = new CancellationTokenSource();
         }
-
-        public async Task<IEnumerable<SwitchoverCandidate>> GetSwitchoverCandidates()
-        {
-            var healthyNodes = _networkConfigurationStatuses
-                .Where(x => x.Healthy)
-                .Select(x => x.NcId);
-
-            var candidates = _clusterConfig.Service.NetworkConfigurations
-                .Select((nc, i) => new SwitchoverCandidate { Name = nc.Id, Priority = i + 1 })
-                .Where(nc => healthyNodes.Contains(nc.Name));
-
-            return candidates;
-        }
-
-        public async Task DestroyNode(string name)
-        {
-            var dhafStatus = await GetDhafClusterStatus();
-            var node = dhafStatus.Nodes.FirstOrDefault(x => x.Name == name);
-
-            if (node is null)
-            {
-                throw new RestApiException(1201, "There is no dhaf node with this name.");
-            }
-
-            if (node.Healthy)
-            {
-                throw new RestApiException(1202, "You cannot destroy a healthy dhaf node. Turn it off and try again.");
-            }
-
-            var nodeStatusPrefix = _etcdClusterRoot
-                + _dhafInternalConfig.Etcd.NodesPath;
-
-            var serviceStatusPrefix = _etcdClusterRoot
-                + _dhafInternalConfig.Etcd.HealthPath;
-
-            await _etcdClient.DeleteAsync(nodeStatusPrefix + node.Name);
-            await _etcdClient.DeleteRangeAsync(serviceStatusPrefix + node.Name);
-        }
-    }
-
-    /// <summary>
-    /// Background tasks that should not be expected to complete via await. These are infinite loops.
-    /// </summary>
-    public class DhafNodeBackgroundTasks
-    {
-        public Task HeartbeatWithIntervalTask { get; set; }
-        public CancellationTokenSource HeartbeatWithIntervalCts { get; set; }
-            = new CancellationTokenSource();
     }
 }

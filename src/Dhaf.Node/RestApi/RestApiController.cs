@@ -41,7 +41,7 @@ namespace Dhaf.Node
         [Route(HttpVerbs.Get, "/switchover/purge")]
         public async Task<RestApiResponse> SwitchoverPurge()
         {
-            await _dhafNode.PurgeManualSwitchover();
+            await _dhafNode.PurgeSwitchover();
             return new RestApiResponse { Success = true };
         }
 
@@ -69,7 +69,7 @@ namespace Dhaf.Node
         [Route(HttpVerbs.Get, "/dhaf/node/destroy")]
         public async Task<RestApiResponse> DhafNodeDestroy([QueryField(true)] string name)
         {
-            await _dhafNode.DestroyNode(name);
+            await _dhafNode.DestroyDhafNode(name);
             return new RestApiResponse { Success = true };
         }
     }
