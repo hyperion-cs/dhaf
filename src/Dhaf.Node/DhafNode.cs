@@ -294,7 +294,6 @@ namespace Dhaf.Node
                 var manualSwitch = await IsManualSwitchingOfNetworkConfigurationRequired();
 
                 var mustSwitchover = manualSwitch.IsRequired && !autoSwitch.Failover;
-
                 var switchoverRequirement = await GetSwitchoverRequirementOrDefault();
 
                 if (!mustSwitchover && switchoverRequirement != _switchoverLastRequirement)
