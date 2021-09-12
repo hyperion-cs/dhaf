@@ -1,4 +1,4 @@
-﻿namespace Dhaf.Node
+﻿namespace Dhaf.CLI
 {
     static class Definitions
     {

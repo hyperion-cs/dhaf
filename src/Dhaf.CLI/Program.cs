@@ -1,7 +1,7 @@
 ﻿using CommandLine;
 using System.Threading.Tasks;
 
-namespace Dhaf.Node
+namespace Dhaf.CLI
 {
     class Program
     {
