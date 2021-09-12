@@ -20,7 +20,7 @@ namespace Dhaf.Node
         Task<ServiceStatus> GetServiceStatus();
         Task<DhafStatus> GetDhafClusterStatus();
 
-        Task DestroyDhafNode(string name);
+        Task DecommissionDhafNode(string name);
 
         Task Switchover(string ncId);
         Task PurgeSwitchover();
@@ -134,7 +134,7 @@ namespace Dhaf.Node
             return new DhafStatus { Leader = _lastKnownLeader, Nodes = nodeStatuses };
         }
 
-        public async Task DestroyDhafNode(string name)
+        public async Task DecommissionDhafNode(string name)
         {
             var dhafStatus = await GetDhafClusterStatus();
             var node = dhafStatus.Nodes.FirstOrDefault(x => x.Name == name);
@@ -146,7 +146,7 @@ namespace Dhaf.Node
 
             if (node.Healthy)
             {
-                throw new RestApiException(1202, "You cannot destroy a healthy dhaf node. Turn it off and try again.");
+                throw new RestApiException(1202, "You can't decommission a healthy node. Turn it off and try again.");
             }
 
             var nodeStatusPrefix = _etcdClusterRoot

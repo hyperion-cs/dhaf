@@ -66,10 +66,10 @@ namespace Dhaf.Node
             return new RestApiResponse<DhafStatus> { Success = true, Data = status };
         }
 
-        [Route(HttpVerbs.Get, "/dhaf/node/destroy")]
-        public async Task<RestApiResponse> DhafNodeDestroy([QueryField(true)] string name)
+        [Route(HttpVerbs.Get, "/dhaf/node/decommission")]
+        public async Task<RestApiResponse> DhafNodeDecommission([QueryField(true)] string name)
         {
-            await _dhafNode.DestroyDhafNode(name);
+            await _dhafNode.DecommissionDhafNode(name);
             return new RestApiResponse { Success = true };
         }
     }

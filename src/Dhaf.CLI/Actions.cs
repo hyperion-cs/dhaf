@@ -2,6 +2,7 @@
 using RestSharp;
 using Spectre.Console;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -16,18 +17,107 @@ namespace Dhaf.Node
             _restClient = new RestClient();
         }
 
+
+        public static async Task<int> ExecuteSwitchoverCandidatesAndReturnExitCode(SwitchoverCandidatesOptions opt)
+        {
+            await PrepareRestClient(opt);
+            var request = new RestRequest($"switchover/candidates");
+
+            var response = await _restClient.GetAsync<RestApiResponse<IEnumerable<SwitchoverCandidate>>>(request);
+            ThrowIfRestApiException(response);
+
+            var table = new Table();
+            table.Border(TableBorder.Ascii2);
+            table.Width = 50;
+            table.Title = new TableTitle("Switchover candidates");
+            table.AddColumns("Priority", "Name");
+
+            table.Columns[0].Centered();
+            table.Columns[1].Centered();
+
+            var candidates = response.Data;
+            foreach (var c in candidates)
+            {
+                table.AddRow(c.Priority.ToString(), c.Name);
+            }
+
+            AnsiConsole.Render(table);
+            return 0;
+        }
+
+
+        public static async Task<int> ExecuteSwitchoverToAndReturnExitCode(SwitchoverToOptions opt)
+        {
+            await PrepareRestClient(opt);
+            var request = new RestRequest($"switchover?ncId={opt.NcName}");
+
+            var response = await _restClient.GetAsync<RestApiResponse>(request);
+            if (!response.Success)
+            {
+                var error = response.Errors.First();
+                Console.WriteLine($"Error {error.Code}: {error.Message}");
+                return -1;
+            }
+
+            Console.WriteLine($"OK. A request for a switchover to has been sent.");
+
+            return 0;
+        }
+
+        public static async Task<int> ExecuteNodeDecommissionAndReturnExitCode(NodeDecommissionOptions opt)
+        {
+            await PrepareRestClient(opt);
+            var request = new RestRequest($"dhaf/node/decommission?name={opt.NodeName}");
+
+            var response = await _restClient.GetAsync<RestApiResponse>(request);
+            if (!response.Success)
+            {
+                var error = response.Errors.First();
+                Console.WriteLine($"Error {error.Code}: {error.Message}");
+                return -1;
+            }
+
+            Console.WriteLine($"OK. The dhaf node has been successfully decommissioned.");
+
+            return 0;
+        }
+
+        public static async Task<int> ExecuteSwitchoverPurgeAndReturnExitCode(SwitchoverPurgeOptions opt)
+        {
+            await PrepareRestClient(opt);
+            var request = new RestRequest($"switchover/purge");
+
+            var response = await _restClient.GetAsync<RestApiResponse>(request);
+            if (!response.Success)
+            {
+                var error = response.Errors.First();
+                Console.WriteLine($"Error {error.Code}: {error.Message}.");
+                return -1;
+            }
+
+            Console.WriteLine("OK. The switchover requirement has been purged.");
+
+            return 0;
+        }
+
         public static async Task<int> ExecuteStatusDhafAndReturnExitCode(StatusDhafOptions opt)
         {
             await PrepareRestClient(opt);
             var request = new RestRequest($"dhaf/status");
 
             var response = await _restClient.GetAsync<RestApiResponse<DhafStatus>>(request);
-            ThrowIfRestApiException(response);
+            if (!response.Success)
+            {
+                var error = response.Errors.First();
+                Console.WriteLine($"Error {error.Code}: {error.Message}");
+            }
 
             var dhafStatus = response.Data;
 
             var table = new Table();
             table.Border(TableBorder.Ascii2);
+            table.Width = 50;
+            table.Title = new TableTitle("Dhaf cluster status");
             table.AddColumns("Node name", "Healthy", "Role");
 
             table.Columns[0].Centered();
@@ -42,7 +132,6 @@ namespace Dhaf.Node
             }
 
             AnsiConsole.Render(table);
-
             return 0;
         }
 
@@ -54,7 +143,11 @@ namespace Dhaf.Node
             var request = new RestRequest($"service/status");
 
             var response = await _restClient.GetAsync<RestApiResponse<ServiceStatus>>(request);
-            ThrowIfRestApiException(response);
+            if (!response.Success)
+            {
+                var error = response.Errors.First();
+                Console.WriteLine($"Error {error.Code}: {error.Message}");
+            }
 
             var serviceStatus = response.Data;
             var isUp = serviceStatus.NetworkConfigurations
@@ -102,7 +195,6 @@ namespace Dhaf.Node
             }
 
             AnsiConsole.Render(ncTable);
-
             return 0;
         }
 
