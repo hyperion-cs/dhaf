@@ -176,7 +176,7 @@ namespace Dhaf.Node
             await PurgeSwitchover();
 
             var key = _etcdClusterRoot
-                + _dhafInternalConfig.Etcd.ManualSwitchingPath;
+                + _dhafInternalConfig.Etcd.SwitchoverPath;
 
             var entity = new EtcdManualSwitching
             {
@@ -191,7 +191,7 @@ namespace Dhaf.Node
         public async Task PurgeSwitchover()
         {
             var key = _etcdClusterRoot
-                + _dhafInternalConfig.Etcd.ManualSwitchingPath;
+                + _dhafInternalConfig.Etcd.SwitchoverPath;
 
             await _etcdClient.DeleteAsync(key);
         }
@@ -707,7 +707,7 @@ namespace Dhaf.Node
             IsManualSwitchingOfNetworkConfigurationRequired()
         {
             var key = _etcdClusterRoot
-                + _dhafInternalConfig.Etcd.ManualSwitchingPath;
+                + _dhafInternalConfig.Etcd.SwitchoverPath;
 
             var rawValue = await _etcdClient.GetValAsync(key);
 
@@ -733,7 +733,7 @@ namespace Dhaf.Node
         protected async Task<string> GetSwitchoverRequirementOrDefault()
         {
             var key = _etcdClusterRoot
-                + _dhafInternalConfig.Etcd.ManualSwitchingPath;
+                + _dhafInternalConfig.Etcd.SwitchoverPath;
 
             var rawValue = await _etcdClient.GetValAsync(key);
 

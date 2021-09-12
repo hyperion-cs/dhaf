@@ -6,17 +6,14 @@ namespace Dhaf.Core
 {
     public class DhafInternalConfig
     {
-        public DhafInternalConfigEtcd Etcd { get; set; } = new DhafInternalConfigEtcd();
-        public DhafInternalConfigWebApi WebApi { get; set; } = new DhafInternalConfigWebApi();
+        public DhafInternalConfigEtcd Etcd { get; set; }
+        public DhafInternalConfigWebApi WebApi { get; set; }
 
-        public int DefHeartbeatInterval { get; set; } = 5;
-        public int DefTactInterval { get; set; } = 10;
-        public int DefHealthyNodeStatusTtl { get; set; } = 30;
+        public int DefHeartbeatInterval { get; set; }
+        public int DefTactInterval { get; set; }
+        public int DefHealthyNodeStatusTtl { get; set; }
 
-        public List<string> Extensions { get; set; } = new List<string>()
-        {
-            "health-checkers/web", "health-checkers/exec", "switchers/cloudflare", "switchers/exec"
-        };
+        public List<string> Extensions { get; set; }
 
         public static Encoding ConfigsEncoding { get; set; } = Encoding.UTF8;
 
@@ -26,17 +23,17 @@ namespace Dhaf.Core
 
     public class DhafInternalConfigEtcd
     {
-        public string LeaderPath { get; set; } = "leader";
-        public int DefLeaderKeyTtl { get; set; } = 15;
+        public string LeaderPath { get; set; }
+        public int DefLeaderKeyTtl { get; set; }
 
-        public string NodesPath { get; set; } = "nodes/";
-        public string HealthPath { get; set; } = "health/";
-        public string ManualSwitchingPath { get; set; } = "manual_switching";
+        public string NodesPath { get; set; }
+        public string HealthPath { get; set; }
+        public string SwitchoverPath { get; set; }
     }
 
     public class DhafInternalConfigWebApi
     {
-        public string DefHost { get; set; } = "localhost";
-        public int DefPort { get; set; } = 8128;
+        public string DefHost { get; set; }
+        public int DefPort { get; set; }
     }
 }

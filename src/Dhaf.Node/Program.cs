@@ -27,8 +27,11 @@ namespace Dhaf.Node
             {
                 var config = new ConfigurationBuilder()
                    .SetBasePath(System.IO.Directory.GetCurrentDirectory())
-                   .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                   .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                    .Build();
+
+                var dhafInternalConfig = new DhafInternalConfig();
+                config.Bind(dhafInternalConfig);
 
                 var servicesProvider = BuildDi(config);
                 using (servicesProvider as IDisposable)
@@ -45,7 +48,6 @@ namespace Dhaf.Node
 
                         dhafNodeLogger.LogInformation($"Configuration file is <{opt.ConfigPath}>.");
 
-                        var dhafInternalConfig = new DhafInternalConfig();
                         var extensionsScope = ExtensionsScopeFactory
                             .GetExtensionsScope(dhafInternalConfig.Extensions);
 

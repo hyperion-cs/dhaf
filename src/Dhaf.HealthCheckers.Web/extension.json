@@ -1,3 +1,20 @@
 {
-	"entryPoint": "Dhaf.HealthCheckers.Web.dll"
+  "entryPoint": "Dhaf.HealthCheckers.Web.dll",
+  "internalConfiguration": {
+    "defHttpPort": 80,
+    "defHttpsPort": 443,
+    "httpSchema": "http",
+    "httpsSchema": "https",
+
+    "defMethod": "GET",
+    "defPath": "/",
+    "defHeaders": {},
+    "defFollowRedirects": false,
+    "defTimeout": 5000,
+    "defRetries": 2,
+    "defExpectedCodes": "200",
+    "expectedCodesSeparator": ",",
+    "expectedCodesWildcard": "X",
+    "defExpectedResponseBody": ""
+  }
 }

@@ -1,3 +1,6 @@
 {
-	"entryPoint": "Dhaf.Switchers.Cloudflare.dll"
+  "entryPoint": "Dhaf.Switchers.Cloudflare.dll",
+  "internalConfiguration": {
+    "baseUrl": "https://api.cloudflare.com/client/v4/"
+  }
 }
