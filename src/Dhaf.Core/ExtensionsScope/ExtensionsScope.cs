@@ -16,6 +16,7 @@ namespace Dhaf.Core
     {
         public IEnumerable<DhafExtension<IHealthChecker>> HealthCheckers { get; set; }
         public IEnumerable<DhafExtension<ISwitcher>> Switchers { get; set; }
+        public IEnumerable<DhafExtension<INotifier>> Notifiers { get; set; }
     }
 
     public class ExtensionMeta<T>
@@ -27,10 +28,19 @@ namespace Dhaf.Core
 
     public class ExtensionsScopeFactory
     {
+        public static T CreateSuchAs<T>(T source)
+        {
+            var type = source.GetType();
+            var destination = Activator.CreateInstance(type);
+
+            return (T)destination;
+        }
+
         public static ExtensionsScope GetExtensionsScope(IEnumerable<string> extensionsPath)
         {
             var healthCheckers = new List<DhafExtension<IHealthChecker>>();
             var switchers = new List<DhafExtension<ISwitcher>>();
+            var notifiers = new List<DhafExtension<INotifier>>();
 
             foreach (var path in extensionsPath)
             {
@@ -39,12 +49,14 @@ namespace Dhaf.Core
 
                 healthCheckers.AddRange(impls.HealthCheckers);
                 switchers.AddRange(impls.Switchers);
+                notifiers.AddRange(impls.Notifiers);
             }
 
             return new ExtensionsScope
             {
                 HealthCheckers = healthCheckers,
                 Switchers = switchers,
+                Notifiers = notifiers,
             };
         }
 
@@ -64,6 +76,7 @@ namespace Dhaf.Core
         {
             var healthCheckers = new List<DhafExtension<IHealthChecker>>();
             var switchers = new List<DhafExtension<ISwitcher>>();
+            var notifiers = new List<DhafExtension<INotifier>>();
 
             var types = assembly.GetTypes();
             foreach (var type in types)
@@ -108,6 +121,28 @@ namespace Dhaf.Core
                         Instance = switcher,
                         ExtensionPath = extensionPath
                     });
+
+                    continue;
+                }
+
+                var notifier = GetImplementationOrDefault<INotifier>(type);
+                if (notifier != null)
+                {
+                    if (!typeof(INotifierConfig).IsAssignableFrom(notifier.ConfigType))
+                    {
+                        throw new Exception($"The notifier config type <{notifier.ConfigType}> does not implement the dhaf notifier config interface.");
+                    }
+
+                    if (!typeof(INotifierInternalConfig).IsAssignableFrom(notifier.InternalConfigType))
+                    {
+                        throw new Exception($"The notifier internal config type <{notifier.InternalConfigType}> does not implement the dhaf notifier internal config interface.");
+                    }
+
+                    notifiers.Add(new DhafExtension<INotifier>
+                    {
+                        Instance = notifier,
+                        ExtensionPath = extensionPath
+                    });
                 }
             }
 
@@ -115,6 +150,7 @@ namespace Dhaf.Core
             {
                 HealthCheckers = healthCheckers,
                 Switchers = switchers,
+                Notifiers = notifiers
             };
         }
 

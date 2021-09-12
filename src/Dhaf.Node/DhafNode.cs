@@ -33,6 +33,7 @@ namespace Dhaf.Node
         private readonly DhafNodeBackgroundTasks _backgroundTasks;
         private readonly ISwitcher _switcher;
         private readonly IHealthChecker _healthChecker;
+        private readonly IEnumerable<INotifier> _notifiers;
         private readonly ILogger<IDhafNode> _logger;
 
         /// <summary>
@@ -68,6 +69,7 @@ namespace Dhaf.Node
             DhafInternalConfig dhafInternalConfig,
             ISwitcher switcher,
             IHealthChecker healthChecker,
+            IEnumerable<INotifier> notifiers,
             ILogger<IDhafNode> logger)
         {
             _clusterConfig = clusterConfig;
@@ -75,6 +77,7 @@ namespace Dhaf.Node
 
             _healthChecker = healthChecker;
             _switcher = switcher;
+            _notifiers = notifiers;
 
             _logger = logger;
 

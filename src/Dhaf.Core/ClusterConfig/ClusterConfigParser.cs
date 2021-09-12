@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using YamlDotNet.Core.Events;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -35,13 +34,23 @@ namespace Dhaf.Core
             * The first phase recognizes specific types. The second phase serializes into the exact types.
             */
 
+            var ectc = new ExtensionConfigTypeConverter();
+
             var defaultMap = new Dictionary<Type, Type>() {
                 { typeof(ISwitcherConfig), typeof(SwitcherDefaultConfig) },
-                { typeof(IHealthCheckerConfig), typeof(HealthCheckerDefaultConfig) }
+                { typeof(IHealthCheckerConfig), typeof(HealthCheckerDefaultConfig) },
+                { typeof(INotifierConfig), typeof(NotifierDefaultConfig) }
             };
 
+            var des = new DeserializerBuilder()
+                .WithNamingConvention(HyphenatedNamingConvention.Instance)
+                .IgnoreUnmatchedProperties()
+                .WithNodeTypeResolver(new ClusterConfigInterfacesResolver(defaultMap))
+                .WithTypeConverter(ectc)
+                .Build();
+
             var configYaml = await File.ReadAllTextAsync(Path, DhafInternalConfig.ConfigsEncoding);
-            var firstPhase = GetDeserializer(defaultMap).Deserialize<ClusterConfig>(configYaml);
+            var firstPhase = des.Deserialize<ClusterConfig>(configYaml);
 
             if (ExtensionsScope == null)
             {
@@ -66,15 +75,36 @@ namespace Dhaf.Core
                 throw new ArgumentException($"Health checker <{firstPhase.HealthCheck.ExtensionName}> is not found in any of the extensions.");
             }
 
-            var realMap = new Dictionary<Type, Type>() {
-                { typeof(ISwitcherConfig), switcher.Instance.ConfigType },
-                { typeof(IHealthCheckerConfig), healthChecker.Instance.ConfigType }
+            var realMap = new List<ExtensionConfigTypeMap>()
+            {
+                new ExtensionConfigTypeMap(typeof(ISwitcherConfig), switcher.Instance.ConfigType),
+                new ExtensionConfigTypeMap(typeof(IHealthCheckerConfig), healthChecker.Instance.ConfigType),
             };
 
-            var secondPhase = GetDeserializer(realMap).Deserialize<ClusterConfig>(configYaml);
+            foreach (var notifierConfig in firstPhase.Notifiers)
+            {
+                var notifier = ExtensionsScope.Notifiers
+                    .FirstOrDefault(x => x.Instance.ExtensionName == notifierConfig.ExtensionName);
+
+                if (notifier == null)
+                {
+                    throw new ArgumentException($"Notifier <{notifierConfig.ExtensionName}> is not found in any of the extensions.");
+                }
+
+                var existingMap = realMap.FirstOrDefault(x => x.ExtensionName == notifier.Instance.ExtensionName
+                                                    && x.ConfigTypeInterface == typeof(INotifierConfig));
+                if (existingMap is null)
+                {
+                    realMap.Add(new ExtensionConfigTypeMap(notifier.Instance.ExtensionName,
+                    typeof(INotifierConfig), notifier.Instance.ConfigType));
+                }
+            }
+
+            ectc.Map = realMap;
+            ectc.Mode = EctcMode.ConvertWithMap;
+
+            var secondPhase = des.Deserialize<ClusterConfig>(configYaml);
             return secondPhase;
-
-
         }
 
         public async Task<T> ParseExtensionInternal<T>(string path, Type internalConfigType)
@@ -92,38 +122,6 @@ namespace Dhaf.Core
             }
 
             return config;
-        }
-
-        protected static IDeserializer GetDeserializer(Dictionary<Type, Type> map)
-        {
-            var deserializer = new DeserializerBuilder()
-                .WithNamingConvention(HyphenatedNamingConvention.Instance)
-                .IgnoreUnmatchedProperties()
-                .WithNodeTypeResolver(new ClusterConfigInterfacesResolver(map))
-                .Build();
-
-            return deserializer;
-        }
-    }
-
-    public class ClusterConfigInterfacesResolver : INodeTypeResolver
-    {
-        protected Dictionary<Type, Type> _map;
-
-        public ClusterConfigInterfacesResolver(Dictionary<Type, Type> map)
-        {
-            _map = map;
-        }
-
-        public bool Resolve(NodeEvent nodeEvent, ref Type type)
-        {
-            if (_map.TryGetValue(type, out var implementationType))
-            {
-                type = implementationType;
-                return true;
-            }
-
-            return false;
         }
     }
 }

@@ -1,0 +1,6 @@
+﻿{
+  "entryPoint": "Dhaf.Notifiers.Email.dll",
+  "internalConfiguration": {
+    "defName": "anonymous"
+  }
+}

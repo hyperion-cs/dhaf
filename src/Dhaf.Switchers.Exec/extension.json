@@ -1,3 +1,4 @@
 {
-	"entryPoint": "Dhaf.Switchers.Exec.dll"
+	"entryPoint": "Dhaf.Switchers.Exec.dll",
+	"internalConfiguration": {}
 }

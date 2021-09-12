@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -31,6 +32,7 @@ namespace Dhaf.Node
             var dhafNodeLogger = _servicesProvider.GetRequiredService<ILogger<IDhafNode>>();
             var swLogger = _servicesProvider.GetRequiredService<ILogger<ISwitcher>>();
             var hcLogger = _servicesProvider.GetRequiredService<ILogger<IHealthChecker>>();
+            var ntfLogger = _servicesProvider.GetRequiredService<ILogger<INotifier>>();
 
             dhafNodeLogger.LogInformation($"Configuration file is <{_argsOptions.ConfigPath}>.");
 
@@ -72,11 +74,35 @@ namespace Dhaf.Node
                 InternalConfig = swInternalConfig
             };
 
+            var notifierTemplates = extensionsScope.Notifiers;
+            var notifiers = new List<INotifier>();
+
+            foreach (var notifierConfig in parsedClusterConfig.Notifiers)
+            {
+                var notifierTemplate = notifierTemplates
+                    .FirstOrDefault(x => x.Instance.ExtensionName == notifierConfig.ExtensionName);
+
+                var instance = ExtensionsScopeFactory.CreateSuchAs(notifierTemplate.Instance);
+
+                var ntfInternalConfig = await clusterConfigParser.ParseExtensionInternal<INotifierInternalConfig>
+                    (notifierTemplate.ExtensionPath, notifierTemplate.Instance.InternalConfigType);
+
+                var ntfInitOptions = new NotifierInitOptions
+                {
+                    Logger = ntfLogger,
+                    Config = notifierConfig,
+                    InternalConfig = ntfInternalConfig
+                };
+
+                notifiers.Add(instance);
+                await instance.Init(ntfInitOptions);
+            }
+
             await healthChecker.Instance.Init(hcInitOptions);
             await switcher.Instance.Init(swInitOptions);
 
             IDhafNode dhafNode = new DhafNode(parsedClusterConfig, dhafInternalConfig,
-                switcher.Instance, healthChecker.Instance, dhafNodeLogger);
+                switcher.Instance, healthChecker.Instance, notifiers, dhafNodeLogger);
 
             dhafNodeLogger.LogTrace("[rest api] Init process...");
 

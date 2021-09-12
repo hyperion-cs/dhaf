@@ -1,3 +1,4 @@
 {
-	"entryPoint": "Dhaf.HealthCheckers.Exec.dll"
+	"entryPoint": "Dhaf.HealthCheckers.Exec.dll",
+	"internalConfiguration": {}
 }
