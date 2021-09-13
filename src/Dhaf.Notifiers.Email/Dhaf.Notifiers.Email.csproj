@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MailKit" Version="2.15.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Dhaf.Core\Dhaf.Core.csproj">
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
@@ -18,8 +22,7 @@
   </ItemGroup>
 
   <Target Name="CopyExtension" Condition="'$(Configuration)' == 'Debug'" AfterTargets="AfterBuild">
-    <Copy SourceFiles="$(OutDir)\Dhaf.Notifiers.Email.dll;$(OutDir)\Dhaf.Notifiers.Email.deps.json;$(OutDir)\extension.json"
-          DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net5\extensions\notifiers\email" />
+    <Copy SourceFiles="$(OutDir)\Dhaf.Notifiers.Email.dll;$(OutDir)\Dhaf.Notifiers.Email.deps.json;$(OutDir)\extension.json" DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net5\extensions\notifiers\email" />
   </Target>
 
 </Project>
