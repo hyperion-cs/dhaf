@@ -3,6 +3,7 @@ using MailKit.Net.Smtp;
 using Microsoft.Extensions.Logging;
 using MimeKit;
 using System;
+using System.Globalization;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -98,7 +99,7 @@ namespace Dhaf.Notifiers.Email
         protected async Task<MessageData> GetMessageData(NotifierPushOptions options)
         {
             var messageData = new MessageData { Body = string.Empty };
-            var timestamp = options.EventData.Timestamp.ToString("F");
+            var timestamp = options.EventData.Timestamp.ToString("F", CultureInfo.InvariantCulture);
 
             if (options.Event == NotifierEvent.ServiceUp
                  || options.Event == NotifierEvent.ServiceDown)

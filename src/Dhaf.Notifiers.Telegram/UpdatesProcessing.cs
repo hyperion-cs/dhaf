@@ -121,14 +121,17 @@ namespace Dhaf.Notifiers.Telegram
                     }
                     catch (ApiRequestException e)
                     {
-                        if (e.ErrorCode == 400)
+                        if (e.ErrorCode == 400 && e.Message.Contains("chat not found"))
                         {
                             await DeleteSubscriber(chatId);
 
                             _logger.LogWarning($"{Sign} Chat with {chatId} not found. It will be removed from the list of notification subscribers.");
                         }
+                        else
+                        {
+                            _logger.LogError($"{Sign} Error {e.ErrorCode}: {e.Message}");
+                        }
                     }
-                    catch { }
                 }
             }
         }

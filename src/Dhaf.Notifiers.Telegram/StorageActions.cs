@@ -1,5 +1,6 @@
 ﻿using Dhaf.Core;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -36,7 +37,7 @@ namespace Dhaf.Notifiers.Telegram
         {
             var subs = await _storage.GetRangeAsync(_internalConfig.StorageSubscribersPath);
 
-            var subIds = subs.Select(x => long.Parse(x.Key));
+            var subIds = subs.Select(x => long.Parse(Path.GetFileName(x.Key)));
             return subIds;
         }
     }
