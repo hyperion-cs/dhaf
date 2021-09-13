@@ -19,6 +19,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.HealthCheckers.Exec", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.Notifiers.Email", "Dhaf.Notifiers.Email\Dhaf.Notifiers.Email.csproj", "{01665C8E-8D27-4CDB-A965-2756D8030624}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dhaf.Notifiers.Telegram", "Dhaf.Notifiers.Telegram\Dhaf.Notifiers.Telegram.csproj", "{010BAE78-C9AD-4F60-A3AD-7588C724E52A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,6 +59,10 @@ Global
 		{01665C8E-8D27-4CDB-A965-2756D8030624}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{01665C8E-8D27-4CDB-A965-2756D8030624}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{01665C8E-8D27-4CDB-A965-2756D8030624}.Release|Any CPU.Build.0 = Release|Any CPU
+		{010BAE78-C9AD-4F60-A3AD-7588C724E52A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{010BAE78-C9AD-4F60-A3AD-7588C724E52A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{010BAE78-C9AD-4F60-A3AD-7588C724E52A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{010BAE78-C9AD-4F60-A3AD-7588C724E52A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

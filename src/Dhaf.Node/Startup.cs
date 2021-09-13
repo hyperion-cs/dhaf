@@ -1,4 +1,5 @@
 ﻿using Dhaf.Core;
+using dotnet_etcd;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -58,12 +59,16 @@ namespace Dhaf.Node
             var hcInternalConfig = await clusterConfigParser.ParseExtensionInternal<IHealthCheckerInternalConfig>
                     (healthChecker.ExtensionPath, healthChecker.Instance.InternalConfigType);
 
+            var etcdClient = new EtcdClient(parsedClusterConfig.Etcd.Hosts);
+
             var hcInitOptions = new HealthCheckerInitOptions
             {
                 Logger = hcLogger,
                 Config = parsedClusterConfig.HealthCheck,
                 ClusterServiceConfig = parsedClusterConfig.Service,
-                InternalConfig = hcInternalConfig
+                InternalConfig = hcInternalConfig,
+                Storage = new ExtensionStorageProvider(etcdClient, parsedClusterConfig, dhafInternalConfig,
+                    dhafInternalConfig.Etcd.ExtensionStorageHcPrefix + parsedClusterConfig.HealthCheck.ExtensionName)
             };
 
             var swInitOptions = new SwitcherInitOptions
@@ -71,7 +76,9 @@ namespace Dhaf.Node
                 Logger = swLogger,
                 Config = parsedClusterConfig.Switcher,
                 ClusterServiceConfig = parsedClusterConfig.Service,
-                InternalConfig = swInternalConfig
+                InternalConfig = swInternalConfig,
+                Storage = new ExtensionStorageProvider(etcdClient, parsedClusterConfig, dhafInternalConfig,
+                    dhafInternalConfig.Etcd.ExtensionStorageSwPrefix + parsedClusterConfig.Switcher.ExtensionName)
             };
 
             var notifierTemplates = extensionsScope.Notifiers;
@@ -91,7 +98,10 @@ namespace Dhaf.Node
                 {
                     Logger = ntfLogger,
                     Config = notifierConfig,
-                    InternalConfig = ntfInternalConfig
+                    InternalConfig = ntfInternalConfig,
+                    Storage = new ExtensionStorageProvider(etcdClient, parsedClusterConfig, dhafInternalConfig,
+                        dhafInternalConfig.Etcd.ExtensionStorageNtfPrefix
+                            + notifierConfig.ExtensionName + $"/{notifierConfig.Name}")
                 };
 
                 notifiers.Add(instance);
@@ -101,8 +111,9 @@ namespace Dhaf.Node
             await healthChecker.Instance.Init(hcInitOptions);
             await switcher.Instance.Init(swInitOptions);
 
+
             IDhafNode dhafNode = new DhafNode(parsedClusterConfig, dhafInternalConfig,
-                switcher.Instance, healthChecker.Instance, notifiers, dhafNodeLogger);
+                switcher.Instance, healthChecker.Instance, notifiers, etcdClient, dhafNodeLogger);
 
             dhafNodeLogger.LogTrace("[rest api] Init process...");
 

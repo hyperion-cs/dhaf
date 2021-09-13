@@ -29,6 +29,11 @@ namespace Dhaf.Core
         public string NodesPath { get; set; }
         public string HealthPath { get; set; }
         public string SwitchoverPath { get; set; }
+        public string ExtensionStoragePath { get; set; }
+
+        public string ExtensionStorageHcPrefix { get; set; }
+        public string ExtensionStorageSwPrefix { get; set; }
+        public string ExtensionStorageNtfPrefix { get; set; }
     }
 
     public class DhafInternalConfigWebApi

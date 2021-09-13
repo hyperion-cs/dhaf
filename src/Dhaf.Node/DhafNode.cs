@@ -70,6 +70,7 @@ namespace Dhaf.Node
             ISwitcher switcher,
             IHealthChecker healthChecker,
             IEnumerable<INotifier> notifiers,
+            EtcdClient etcdClient,
             ILogger<IDhafNode> logger)
         {
             _clusterConfig = clusterConfig;
@@ -81,7 +82,7 @@ namespace Dhaf.Node
 
             _logger = logger;
 
-            _etcdClient = new EtcdClient(_clusterConfig.Etcd.Hosts);
+            _etcdClient = etcdClient;
             _backgroundTasks = new DhafNodeBackgroundTasks();
 
             // TODO: Transfer to the cluster configuration parser.
