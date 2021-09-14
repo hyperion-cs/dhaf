@@ -1,5 +1,6 @@
 ﻿using Dhaf.Core;
 using System;
+using System.Collections.Generic;
 
 namespace Dhaf.NotifierEventData
 {
@@ -13,7 +14,7 @@ namespace Dhaf.NotifierEventData
     public class NcHealthChanged : Base
     {
         public string NcName { get; set; }
-        public string Reason { get; set; }
+        public IEnumerable<string> Reasons { get; set; }
     }
 
     public class CurrentNcChanged : Base

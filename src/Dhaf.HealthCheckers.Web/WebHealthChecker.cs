@@ -60,6 +60,8 @@ namespace Dhaf.HealthCheckers.Web
 
             const int RETRYING_INIT_VALUE = 0;
 
+            DownReason? downReason = null;
+
             var request = new RestRequest(uri);
             request.AddHeaders(_config.Headers ?? _internalConfig.DefHeaders);
 
@@ -73,16 +75,28 @@ namespace Dhaf.HealthCheckers.Web
                 var method = Enum.Parse<Method>(_config.Method ?? _internalConfig.DefMethod);
                 var response = await _client.ExecuteAsync(request, method);
 
-                if (response.ResponseStatus != ResponseStatus.Completed
-                    || !CheckHttpCode(response.StatusCode, expectedCodes)
-                    || !response.Content.Contains(expectedResponseBody))
+                if (response.ResponseStatus != ResponseStatus.Completed)
                 {
+                    downReason = DownReason.Timeout;
                     continue;
                 }
+
+                if (!CheckHttpCode(response.StatusCode, expectedCodes))
+                {
+                    downReason = DownReason.UnexpectedHttpCode;
+                    continue;
+                }
+
+                if (!response.Content.Contains(expectedResponseBody))
+                {
+                    downReason = DownReason.UnexpectedResponseBody;
+                    continue;
+                }
+
                 return new HealthStatus { Healthy = true };
             }
 
-            return new HealthStatus { Healthy = false };
+            return new HealthStatus { Healthy = false, ReasonCode = (int)downReason };
         }
 
         protected string PrepareAndCheckSchema(string schema)
@@ -125,5 +139,10 @@ namespace Dhaf.HealthCheckers.Web
         }
 
         public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role) { }
+
+        public async Task<string> ResolveUnhealthinessReasonCode(int code)
+        {
+            return DownReasonResolver.Resolve(code);
+        }
     }
 }

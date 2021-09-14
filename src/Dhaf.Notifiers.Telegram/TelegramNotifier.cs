@@ -169,12 +169,12 @@ namespace Dhaf.Notifiers.Telegram
             {
                 var eventData = (NotifierEventData.NcHealthChanged)options.EventData;
                 var ncName = MdEscape(eventData.NcName);
-                var reason = MdEscape(eventData.Reason);
+                var reasons = MdEscape(string.Join("; ", eventData.Reasons));
 
                 message = $"The network configuration *{ncName}* in dhaf cluster "
                                  + $"*{dhafCluster}* is unhealthy \\(*DOWN*\\)\\."
                                  + $"\n\nTimestamp \\(UTC\\): *{timestamp}*"
-                                 + $"\n*Reason*: {reason}";
+                                 + $"\n*Reason\\(s\\)*: {reasons}";
             }
 
             if (options.Event == NotifierEvent.SwitchoverPurged)

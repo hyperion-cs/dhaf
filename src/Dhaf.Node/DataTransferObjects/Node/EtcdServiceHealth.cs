@@ -4,5 +4,6 @@
     {
         public bool Healthy { get; set; }
         public long Timestamp { get; set; }
+        public int? ReasonCode { get; set; }
     }
 }

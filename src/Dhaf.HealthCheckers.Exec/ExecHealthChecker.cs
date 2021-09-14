@@ -63,5 +63,10 @@ namespace Dhaf.HealthCheckers.Exec
         }
 
         public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role) { }
+
+        public async Task<string> ResolveUnhealthinessReasonCode(int code)
+        {
+            return "The return code was different from <0>.";
+        }
     }
 }

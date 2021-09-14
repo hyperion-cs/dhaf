@@ -649,7 +649,13 @@ namespace Dhaf.Node
                 + nc.Id;
 
             var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
-            var serviceHealth = new EtcdServiceHealth { Timestamp = timestamp, Healthy = status.Healthy };
+            var serviceHealth = new EtcdServiceHealth
+            {
+                Timestamp = timestamp,
+                Healthy = status.Healthy,
+                ReasonCode = status.ReasonCode
+            };
+
             var value = JsonSerializer.Serialize(serviceHealth, DhafInternalConfig.JsonSerializerOptions);
 
             await _etcdClient.PutAsync(key, value);
@@ -714,6 +720,17 @@ namespace Dhaf.Node
                 if (positiveOpinons >= healthyNodesMostCount)
                 {
                     ncStatus.Healthy = true;
+                }
+                else
+                {
+                    var reasonCodeTasks = hostHealthOpinions.Value
+                        .Where(x => !x.Healthy && x.ReasonCode.HasValue)
+                        .Select(x => x.ReasonCode)
+                        .Distinct()
+                        .Select(async x => await _healthChecker.ResolveUnhealthinessReasonCode(x.Value));
+
+                    var reasonCodes = await Task.WhenAll(reasonCodeTasks);
+                    ncStatus.Reasons = reasonCodes;
                 }
 
                 result.Add(ncStatus);
@@ -866,7 +883,7 @@ namespace Dhaf.Node
 
                     if (!curr.Healthy)
                     {
-                        eventData.Reason = "The value of the current field in development.";
+                        eventData.Reasons = curr.Reasons;
                     }
 
                     await PushToNotifiers(new NotifierPushOptions

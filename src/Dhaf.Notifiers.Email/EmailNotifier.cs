@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using MimeKit;
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -165,13 +166,17 @@ namespace Dhaf.Notifiers.Email
             if (options.Event == NotifierEvent.NcDown)
             {
                 var eventData = (NotifierEventData.NcHealthChanged)options.EventData;
+                var firstReason = eventData.Reasons.FirstOrDefault();
+
                 messageData.Subject
-                    = $"Dhaf {options.Level}: DOWN | {eventData.DhafCluster} | {eventData.NcName} | {eventData.Reason}";
+                    = $"Dhaf {options.Level}: DOWN | {eventData.DhafCluster} | {eventData.NcName} | {firstReason}";
+
+                var reasons = string.Join("; ", eventData.Reasons);
 
                 messageData.Body = $"The network configuration <b>{eventData.NcName}</b> in dhaf cluster "
                                  + $"<b>{eventData.DhafCluster}</b> is unhealthy ({WrapText("DOWN", "red")})."
                                  + $"<br>Timestamp (UTC): <b>{timestamp}</b>"
-                                 + $"<br><b>Reason</b>: {eventData.Reason}";
+                                 + $"<br><b>Reason(s)</b>: {reasons}";
             }
 
             if (options.Event == NotifierEvent.SwitchoverPurged)
