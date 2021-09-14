@@ -47,7 +47,7 @@ namespace Dhaf.Node
         /// </summary>
         protected bool _panicMode = false;
 
-        protected string _switchoverLastRequirement = null;
+        protected string _switchoverLastRequirementInStorage = null;
 
         /// <summary>
         /// The etcd lease identifier for the leader key.
@@ -60,8 +60,11 @@ namespace Dhaf.Node
         protected ClusterConfig _clusterConfig;
         protected DhafInternalConfig _dhafInternalConfig;
 
-        protected Dictionary<string, EtcdNodeStatus> _dhafNodeStatuses = new();
+        protected Dictionary<string, DhafNodeStatus> _dhafNodeStatuses = new();
+        protected Dictionary<string, DhafNodeStatus> _previousDhafNodeStatuses = new(); // For tracking changes.
+
         protected IEnumerable<NetworkConfigurationStatus> _networkConfigurationStatuses;
+        protected IEnumerable<NetworkConfigurationStatus> _previousNetworkConfigurationStatuses; // For tracking changes.
 
         protected string _etcdClusterRoot { get => $"/{_clusterConfig.Dhaf.ClusterName}/"; }
 
@@ -127,13 +130,7 @@ namespace Dhaf.Node
         public async Task<DhafStatus> GetDhafClusterStatus()
         {
             var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
-
-            var nodeStatuses = _dhafNodeStatuses
-                .Select(x => new DhafNodeStatus
-                {
-                    Name = x.Key,
-                    Healthy = (timestamp - x.Value.LastHeartbeatTimestamp) <= _dhafInternalConfig.DefHealthyNodeStatusTtl
-                });
+            var nodeStatuses = _dhafNodeStatuses.Select(x => x.Value);
 
             return new DhafStatus { Leader = _lastKnownLeader, Nodes = nodeStatuses };
         }
@@ -276,6 +273,7 @@ namespace Dhaf.Node
 
             // The following task need to be performed NOT ONLY by the leader
             // in order for the CLI/REST API to work fully.
+            _previousNetworkConfigurationStatuses = _networkConfigurationStatuses;
             _networkConfigurationStatuses = await InspectResultsOfNetworkConfigurationsHealthCheck();
 
             if (_role == DhafNodeRole.Leader)
@@ -286,42 +284,72 @@ namespace Dhaf.Node
                     if (_panicMode)
                     {
                         _logger.LogError("Panic mode is ON. All NCs are unhealthy. The service is DOWN and dhaf is physically unable to fix the situation on its own.");
+
+                        var eventData = await GetBaseEventData<NotifierEventData.ServiceHealthChanged>();
+                        await PushToNotifiers(new NotifierPushOptions
+                        {
+                            Level = NotifierLevel.Critical,
+                            Event = NotifierEvent.ServiceDown,
+                            EventData = eventData
+                        });
                     }
                     else
                     {
                         _logger.LogInformation("Panic mode is OFF.");
+
+                        var eventData = await GetBaseEventData<NotifierEventData.ServiceHealthChanged>();
+                        await PushToNotifiers(new NotifierPushOptions
+                        {
+                            Level = NotifierLevel.Info,
+                            Event = NotifierEvent.ServiceUp,
+                            EventData = eventData
+                        });
                     }
                 }
 
                 _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
-                var autoSwitch = await IsAutoSwitchingOfNetworkConfigurationRequired();
-                var manualSwitch = await IsManualSwitchingOfNetworkConfigurationRequired();
 
-                var mustSwitchover = manualSwitch.IsRequired && !autoSwitch.Failover;
-                var switchoverRequirement = await GetSwitchoverRequirementOrDefault();
+                var autoSwitchRequirement = await IsAutoSwitchOfNetworkConfigurationRequired();
+                var switchoverRequirement = await IsSwitchoverOfNetworkConfigurationRequired();
 
-                if (!mustSwitchover && switchoverRequirement != _switchoverLastRequirement)
+                // It can be FALSE even if there is a requirement in the storage.
+                // For example: the switchover requirement has already been completed.
+                var mustSwitchover = switchoverRequirement.IsRequired && !autoSwitchRequirement.Failover;
+
+                var switchoverRequirementInStorage = await GetSwitchoverRequirementOrDefault();
+
+                if (!mustSwitchover && switchoverRequirementInStorage != _switchoverLastRequirementInStorage)
                 {
-                    if (switchoverRequirement is null)
+                    if (switchoverRequirementInStorage is null)
                     {
                         _logger.LogInformation("The switchover requirement are purged.");
+
+                        var eventData = await GetBaseEventData<NotifierEventData.SwitchoverPurged>();
+                        eventData.SwitchoverNc = _switchoverLastRequirementInStorage;
+
+                        await PushToNotifiers(new NotifierPushOptions
+                        {
+                            Level = NotifierLevel.Info,
+                            Event = NotifierEvent.SwitchoverPurged,
+                            EventData = eventData
+                        });
                     }
                     else
                     {
-                        _logger.LogInformation($"There is switchover requirement to <{switchoverRequirement}>. No action is taken because the current configuration is already so.");
+                        _logger.LogInformation($"There is switchover requirement to <{switchoverRequirementInStorage}>. No action is taken because the current configuration is already so.");
                     }
                 }
 
-                _switchoverLastRequirement = switchoverRequirement;
+                _switchoverLastRequirementInStorage = switchoverRequirementInStorage;
 
-                var mustAutoSwitchover = autoSwitch.IsRequired
-                    && !autoSwitch.Failover && switchoverRequirement == null;
+                var mustSwitching = autoSwitchRequirement.IsRequired
+                    && !autoSwitchRequirement.Failover && switchoverRequirementInStorage == null;
 
-                if (autoSwitch.Failover)
+                if (autoSwitchRequirement.Failover)
                 {
                     _logger.LogWarning($"Current NC <{_currentNetworkConfigurationId}> is DOWN. A failover has been started...");
 
-                    if (switchoverRequirement != null)
+                    if (switchoverRequirementInStorage != null)
                     {
                         _logger.LogWarning("Purge switchover requirement because failover is required...");
                         await PurgeSwitchover();
@@ -329,48 +357,96 @@ namespace Dhaf.Node
 
                     await _switcher.Switch(new SwitcherSwitchOptions
                     {
-                        NcId = autoSwitch.SwitchTo,
-                        Failover = autoSwitch.Failover
+                        NcId = autoSwitchRequirement.SwitchTo,
+                        Failover = autoSwitchRequirement.Failover
+                    });
+
+                    var eventData = await GetBaseEventData<NotifierEventData.CurrentNcChanged>();
+                    eventData.FromNc = _currentNetworkConfigurationId;
+                    eventData.ToNc = autoSwitchRequirement.SwitchTo;
+
+                    await PushToNotifiers(new NotifierPushOptions
+                    {
+                        Level = NotifierLevel.Warning,
+                        Event = NotifierEvent.Failover,
+                        EventData = eventData
                     });
                 }
                 if (mustSwitchover)
                 {
                     var proposedHost = _networkConfigurationStatuses
-                        .FirstOrDefault(x => x.NcId == manualSwitch.SwitchTo);
+                        .FirstOrDefault(x => x.NcId == switchoverRequirement.SwitchTo);
 
                     if (proposedHost.Healthy)
                     {
                         _logger.LogInformation("Switchover is requested...");
                         await _switcher.Switch(new SwitcherSwitchOptions
                         {
-                            NcId = manualSwitch.SwitchTo,
-                            Failover = manualSwitch.Failover
+                            NcId = switchoverRequirement.SwitchTo,
+                            Failover = switchoverRequirement.Failover
+                        });
+
+                        var eventData = await GetBaseEventData<NotifierEventData.CurrentNcChanged>();
+                        eventData.FromNc = _currentNetworkConfigurationId;
+                        eventData.ToNc = switchoverRequirement.SwitchTo;
+
+                        await PushToNotifiers(new NotifierPushOptions
+                        {
+                            Level = NotifierLevel.Info,
+                            Event = NotifierEvent.Switchover,
+                            EventData = eventData
                         });
                     }
                     else
                     {
-                        _logger.LogError($"Swithover is requested but it is not possible because the specified network configuration <{manualSwitch.SwitchTo}> is unhealthy. The requirement to switchover will be purged.");
+                        _logger.LogError($"Swithover is requested but it is not possible because the specified network configuration <{switchoverRequirement.SwitchTo}> is unhealthy. The requirement to switchover will be purged.");
 
                         await PurgeSwitchover();
-                        mustAutoSwitchover = autoSwitch.IsRequired && !autoSwitch.Failover;
+                        mustSwitching = autoSwitchRequirement.IsRequired && !autoSwitchRequirement.Failover;
                     }
                 }
 
-                if (mustAutoSwitchover)
+                if (mustSwitching)
                 {
-                    _logger.LogInformation($"Switching to a higher priority healthy NC <{autoSwitch.SwitchTo}>...");
+                    _logger.LogInformation($"Switching to a higher priority healthy NC <{autoSwitchRequirement.SwitchTo}>...");
 
                     await _switcher.Switch(new SwitcherSwitchOptions
                     {
-                        NcId = autoSwitch.SwitchTo,
-                        Failover = autoSwitch.Failover
+                        NcId = autoSwitchRequirement.SwitchTo,
+                        Failover = autoSwitchRequirement.Failover
+                    });
+
+                    var eventData = await GetBaseEventData<NotifierEventData.CurrentNcChanged>();
+                    eventData.FromNc = _currentNetworkConfigurationId;
+                    eventData.ToNc = autoSwitchRequirement.SwitchTo;
+
+                    await PushToNotifiers(new NotifierPushOptions
+                    {
+                        Level = NotifierLevel.Info,
+                        Event = NotifierEvent.Switching,
+                        EventData = eventData
                     });
                 }
+
+                await NotifyChangesInNcHealth();
+                await NotifyChangesInDhafNodesHealth();
             }
 
             _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
             _logger.LogTrace("Tact is over.");
             _logger.LogDebug($"NC is <{_currentNetworkConfigurationId}>.");
+        }
+
+        protected async Task<T> GetBaseEventData<T>()
+            where T : NotifierEventData.Base, new()
+        {
+            var data = new T()
+            {
+                DhafCluster = _clusterConfig.Dhaf.ClusterName,
+                UtcTimestamp = DateTime.UtcNow
+            };
+
+            return data;
         }
 
         /// <summary>Checks if a cluster leader exists.</summary>
@@ -390,6 +466,8 @@ namespace Dhaf.Node
         protected async Task ParticipateInLeaderElection()
         {
             _role = DhafNodeRole.Candidate;
+            await SendDhafNodeRoleChangedEvent(_role);
+
             _logger.LogWarning("There is no leader. Participating in the election...");
 
             var promotionStatus = await TryPromotion();
@@ -398,11 +476,26 @@ namespace Dhaf.Node
             {
                 _role = DhafNodeRole.Leader;
                 _leaderLeaseId = promotionStatus.LeaderLeaseId;
+
+                await SendDhafNodeRoleChangedEvent(_role);
+
                 _logger.LogInformation("I'm a leader now.");
+
+                var eventData = await GetBaseEventData<NotifierEventData.DhafNewLeader>();
+                eventData.Leader = _clusterConfig.Dhaf.NodeName;
+
+                await PushToNotifiers(new NotifierPushOptions
+                {
+                    Level = NotifierLevel.Info,
+                    Event = NotifierEvent.DhafNewLeader,
+                    EventData = eventData
+                });
             }
             else
             {
                 _role = DhafNodeRole.Follower;
+                await SendDhafNodeRoleChangedEvent(_role);
+
                 _logger.LogInformation($"I'm a follower now, <{promotionStatus.Leader}> is the leader.");
             }
 
@@ -522,7 +615,7 @@ namespace Dhaf.Node
 
             var heartbeatTimestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
 
-            var nodeStatus = new EtcdNodeStatus { LastHeartbeatTimestamp = heartbeatTimestamp };
+            var nodeStatus = new DhafNodeStatusRaw { LastHeartbeatTimestamp = heartbeatTimestamp };
             var content = JsonSerializer.Serialize(nodeStatus, DhafInternalConfig.JsonSerializerOptions);
 
             await _etcdClient.PutAsync(key, content);
@@ -581,8 +674,7 @@ namespace Dhaf.Node
         {
             var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
             var healthyNodes = _dhafNodeStatuses
-                .Where(x => (timestamp - x.Value.LastHeartbeatTimestamp)
-                                <= _dhafInternalConfig.DefHealthyNodeStatusTtl)
+                .Where(x => x.Value.Healthy)
                 .Select(x => x.Key);
 
             var hostsHealthOpinions = new Dictionary<string, List<EtcdServiceHealth>>();
@@ -641,9 +733,21 @@ namespace Dhaf.Node
 
             var values = await _etcdClient.GetRangeValAsync(keyPrefix);
             var entities = values.ToDictionary(k => Path.GetFileName(k.Key),
-                v => JsonSerializer.Deserialize<EtcdNodeStatus>(v.Value, DhafInternalConfig.JsonSerializerOptions));
+                v => JsonSerializer.Deserialize<DhafNodeStatusRaw>(v.Value, DhafInternalConfig.JsonSerializerOptions));
 
-            _dhafNodeStatuses = entities;
+            var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
+
+            var nodeStatuses = entities
+                .Select(x => new DhafNodeStatus
+                {
+                    Name = x.Key,
+                    Healthy = ((timestamp - x.Value.LastHeartbeatTimestamp)
+                                        <= _dhafInternalConfig.DefHealthyNodeStatusTtl)
+                })
+                .ToDictionary(x => x.Name);
+
+            _previousDhafNodeStatuses = _dhafNodeStatuses;
+            _dhafNodeStatuses = nodeStatuses;
         }
 
         protected async Task<UpdatePanicModeRelevanceResult> UpdatePanicModeRelevance()
@@ -666,7 +770,7 @@ namespace Dhaf.Node
         /// which has become healthy again).
         /// </summary>
         protected async Task<DecisionOfNetworkConfigurationSwitching>
-            IsAutoSwitchingOfNetworkConfigurationRequired()
+            IsAutoSwitchOfNetworkConfigurationRequired()
         {
             var negativeDecision = new DecisionOfNetworkConfigurationSwitching
             {
@@ -707,7 +811,7 @@ namespace Dhaf.Node
         }
 
         protected async Task<DecisionOfNetworkConfigurationSwitching>
-            IsManualSwitchingOfNetworkConfigurationRequired()
+            IsSwitchoverOfNetworkConfigurationRequired()
         {
             var key = _etcdClusterRoot
                 + _dhafInternalConfig.Etcd.SwitchoverPath;
@@ -733,6 +837,85 @@ namespace Dhaf.Node
             return new DecisionOfNetworkConfigurationSwitching { Failover = false, IsRequired = false };
         }
 
+        protected async Task NotifyChangesInNcHealth()
+        {
+            foreach (var curr in _networkConfigurationStatuses)
+            {
+                var pushRequired = false;
+
+                if (_previousNetworkConfigurationStatuses is null || !_previousNetworkConfigurationStatuses.Any())
+                {
+                    if (!curr.Healthy)
+                    {
+                        pushRequired = true;
+                    }
+                }
+                else
+                {
+                    var prev = _previousNetworkConfigurationStatuses.FirstOrDefault(x => x.NcId == curr.NcId);
+                    if (prev is not null && curr.Healthy != prev.Healthy)
+                    {
+                        pushRequired = true;
+                    }
+                }
+
+                if (pushRequired)
+                {
+                    var eventData = await GetBaseEventData<NotifierEventData.NcHealthChanged>();
+                    eventData.NcName = curr.NcId;
+
+                    if (!curr.Healthy)
+                    {
+                        eventData.Reason = "The value of the current field in development.";
+                    }
+
+                    await PushToNotifiers(new NotifierPushOptions
+                    {
+                        Level = curr.Healthy ? NotifierLevel.Info : NotifierLevel.Warning,
+                        Event = curr.Healthy ? NotifierEvent.NcUp : NotifierEvent.NcDown,
+                        EventData = eventData
+                    });
+                }
+            }
+        }
+
+        protected async Task NotifyChangesInDhafNodesHealth()
+        {
+            foreach (var curr in _dhafNodeStatuses)
+            {
+                var pushRequired = false;
+
+                if (_previousDhafNodeStatuses is null || !_previousDhafNodeStatuses.Any())
+                {
+                    if (!curr.Value.Healthy)
+                    {
+                        pushRequired = true;
+                    }
+                }
+                else if (_previousDhafNodeStatuses.ContainsKey(curr.Key))
+                {
+                    var prev = _previousDhafNodeStatuses[curr.Key];
+                    if (curr.Value.Healthy != prev.Healthy)
+                    {
+                        pushRequired = true;
+                    }
+                }
+
+                if (pushRequired)
+                {
+                    var eventData = await GetBaseEventData<NotifierEventData.DhafNodeHealthChanged>();
+                    eventData.NodeName = curr.Value.Name;
+
+                    await PushToNotifiers(new NotifierPushOptions
+                    {
+                        Level = curr.Value.Healthy ? NotifierLevel.Info : NotifierLevel.Warning,
+                        Event = curr.Value.Healthy ? NotifierEvent.NcUp : NotifierEvent.NcDown,
+                        EventData = eventData
+                    });
+                }
+            }
+        }
+
         protected async Task<string> GetSwitchoverRequirementOrDefault()
         {
             var key = _etcdClusterRoot
@@ -748,6 +931,32 @@ namespace Dhaf.Node
             var value = JsonSerializer.Deserialize<EtcdManualSwitching>(rawValue, DhafInternalConfig.JsonSerializerOptions);
 
             return value.NCId;
+        }
+
+        protected async Task SendDhafNodeRoleChangedEvent(DhafNodeRole role)
+        {
+            await _switcher.DhafNodeRoleChangedEventHandler(role);
+            await _healthChecker.DhafNodeRoleChangedEventHandler(role);
+
+            var notifierHandlers = _notifiers.Select(x => x.DhafNodeRoleChangedEventHandler(role));
+            await Task.WhenAll(notifierHandlers);
+        }
+
+        protected async Task PushToNotifiers(NotifierPushOptions opt)
+        {
+            var tasks = _notifiers.Select(async x =>
+            {
+                try
+                {
+                    await x.Push(opt);
+                }
+                catch
+                {
+                    _logger.LogError($"Error in sending a notification via the <{x.ExtensionName}> provider.");
+                }
+            });
+
+            await Task.WhenAll(tasks);
         }
 
         /// <summary>

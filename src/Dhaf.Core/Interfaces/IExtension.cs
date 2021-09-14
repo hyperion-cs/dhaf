@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace Dhaf.Core
 {
@@ -8,5 +9,7 @@ namespace Dhaf.Core
         string Sign { get; }
         Type ConfigType { get; }
         Type InternalConfigType { get; }
+
+        Task DhafNodeRoleChangedEventHandler(DhafNodeRole role);
     }
 }

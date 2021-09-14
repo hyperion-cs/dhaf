@@ -123,5 +123,7 @@ namespace Dhaf.HealthCheckers.Web
 
             return isCodeOk;
         }
+
+        public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role) { }
     }
 }

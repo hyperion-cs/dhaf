@@ -76,5 +76,7 @@ namespace Dhaf.Switchers.Exec
             _currentNetworkConfigurationId = nc.Id;
             _logger.LogInformation($"{Sign} Successfully switched to NC <{nc.Id}>.");
         }
+
+        public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role) { }
     }
 }

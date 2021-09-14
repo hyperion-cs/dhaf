@@ -16,14 +16,14 @@ namespace Dhaf.Notifiers.Telegram
     {
         private static readonly Update[] EmptyUpdates = Array.Empty<Update>();
         private int? _messageOffset = null;
-        private CancellationTokenSource _receivingCts = new();
+        private CancellationTokenSource _handleUpdatesWithIntervalCts = new();
         private Task _handleUpdatesWithIntervalTask;
 
-        protected async Task HandleUpdatesWithInterval()
+        protected async Task HandleUpdatesWithInterval(CancellationToken cancellationToken)
         {
             var interval = _internalConfig.UpdatesPollingInterval;
 
-            while (!_receivingCts.IsCancellationRequested)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 var updates = await ReceiveUpdates();
                 await HandleUpdates(updates);
@@ -121,17 +121,9 @@ namespace Dhaf.Notifiers.Telegram
                     }
                     catch (ApiRequestException e)
                     {
-                        if (e.ErrorCode == 400 && e.Message.Contains("chat not found"))
-                        {
-                            await DeleteSubscriber(chatId);
-
-                            _logger.LogWarning($"{Sign} Chat with {chatId} not found. It will be removed from the list of notification subscribers.");
-                        }
-                        else
-                        {
-                            _logger.LogError($"{Sign} Error {e.ErrorCode}: {e.Message}");
-                        }
+                        await ProcessPossibleUnavailableSubscriber(e, chatId);
                     }
+                    catch { }
                 }
             }
         }

@@ -196,5 +196,7 @@ namespace Dhaf.Switchers.Cloudflare
         {
             return _currentNetworkConfigurationId;
         }
+
+        public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role) { }
     }
 }

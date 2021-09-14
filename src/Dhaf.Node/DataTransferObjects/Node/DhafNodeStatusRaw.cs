@@ -1,6 +1,6 @@
 ﻿namespace Dhaf.Node
 {
-    public class EtcdNodeStatus
+    public class DhafNodeStatusRaw
     {
         public long LastHeartbeatTimestamp { get; set; }
     }

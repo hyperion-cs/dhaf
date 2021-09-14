@@ -96,15 +96,17 @@ namespace Dhaf.Notifiers.Email
             _smtpClient.Disconnect(true);
         }
 
+        public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role) { }
+
         protected async Task<MessageData> GetMessageData(NotifierPushOptions options)
         {
             var messageData = new MessageData { Body = string.Empty };
-            var timestamp = options.EventData.Timestamp.ToString("F", CultureInfo.InvariantCulture);
+            var timestamp = options.EventData.UtcTimestamp.ToString("F", CultureInfo.InvariantCulture);
 
             if (options.Event == NotifierEvent.ServiceUp
                  || options.Event == NotifierEvent.ServiceDown)
             {
-                var eventData = (ServiceHealthChangedEventData)options.EventData;
+                var eventData = (NotifierEventData.ServiceHealthChanged)options.EventData;
 
                 var verb = options.Event == NotifierEvent.ServiceUp ? "UP" : "DOWN";
                 var longVerb = verb == "UP" ? $"healthy ({WrapText("UP", "green")})"
@@ -115,14 +117,13 @@ namespace Dhaf.Notifiers.Email
 
                 messageData.Body = $"The service in dhaf cluster "
                  + $"<b>{eventData.DhafCluster}</b> is {longVerb}."
-                 + $"<br>Timestamp (UTC): <b>{timestamp}</b>"
-                 + $"<br>Domain: <b>{options.EventData.Domain}</b>";
+                 + $"<br>Timestamp (UTC): <b>{timestamp}</b>";
             }
 
             if (options.Event == NotifierEvent.DhafNodeUp
                  || options.Event == NotifierEvent.DhafNodeDown)
             {
-                var eventData = (DhafNodeHealthChangedEventData)options.EventData;
+                var eventData = (NotifierEventData.DhafNodeHealthChanged)options.EventData;
 
                 var verb = options.Event == NotifierEvent.DhafNodeUp ? "UP" : "DOWN";
                 var longVerb = verb == "UP" ? $"healthy ({WrapText("UP", "green")})"
@@ -133,15 +134,14 @@ namespace Dhaf.Notifiers.Email
 
                 messageData.Body = $"The dhaf node <b>{eventData.NodeName}</b> in dhaf cluster "
                  + $"<b>{eventData.DhafCluster}</b> is {longVerb}."
-                 + $"<br>Timestamp (UTC): <b>{timestamp}</b>"
-                 + $"<br>Domain: <b>{options.EventData.Domain}</b>";
+                 + $"<br>Timestamp (UTC): <b>{timestamp}</b>";
             }
 
             if (options.Event == NotifierEvent.Failover
                  || options.Event == NotifierEvent.Switchover
                  || options.Event == NotifierEvent.Switching)
             {
-                var eventData = (CurrentNcChangedEventData)options.EventData;
+                var eventData = (NotifierEventData.CurrentNcChanged)options.EventData;
                 var verb = options.Event.ToString().ToUpper();
 
                 messageData.Subject
@@ -149,32 +149,53 @@ namespace Dhaf.Notifiers.Email
 
                 messageData.Body = $"There was a network configuration {verb} from <b>{eventData.FromNc}</b> "
                  + $"to <b>{eventData.ToNc}</b> in dhaf cluster <b>{eventData.DhafCluster}</b>."
-                 + $"<br>Timestamp (UTC): <b>{timestamp}</b>"
-                 + $"<br>Domain: <b>{options.EventData.Domain}</b>";
+                 + $"<br>Timestamp (UTC): <b>{timestamp}</b>";
             }
 
             if (options.Event == NotifierEvent.NcUp)
             {
-                var eventData = (NcHealthChangedEventData)options.EventData;
+                var eventData = (NotifierEventData.NcHealthChanged)options.EventData;
                 messageData.Subject = $"Dhaf {options.Level}: UP | {eventData.DhafCluster} | {eventData.NcName}";
 
                 messageData.Body = $"The network configuration <b>{eventData.NcName}</b> in dhaf cluster "
                                  + $"<b>{eventData.DhafCluster}</b> is healthy ({WrapText("UP", "green")})."
-                                 + $"<br>Timestamp (UTC): <b>{timestamp}</b>"
-                                 + $"<br>Domain: <b>{options.EventData.Domain}</b>";
+                                 + $"<br>Timestamp (UTC): <b>{timestamp}</b>";
             }
 
             if (options.Event == NotifierEvent.NcDown)
             {
-                var eventData = (NcHealthChangedEventData)options.EventData;
+                var eventData = (NotifierEventData.NcHealthChanged)options.EventData;
                 messageData.Subject
                     = $"Dhaf {options.Level}: DOWN | {eventData.DhafCluster} | {eventData.NcName} | {eventData.Reason}";
 
                 messageData.Body = $"The network configuration <b>{eventData.NcName}</b> in dhaf cluster "
                                  + $"<b>{eventData.DhafCluster}</b> is unhealthy ({WrapText("DOWN", "red")})."
                                  + $"<br>Timestamp (UTC): <b>{timestamp}</b>"
-                                 + $"<br>Domain: <b>{options.EventData.Domain}</b>"
                                  + $"<br><b>Reason</b>: {eventData.Reason}";
+            }
+
+            if (options.Event == NotifierEvent.SwitchoverPurged)
+            {
+                var eventData = (NotifierEventData.SwitchoverPurged)options.EventData;
+
+                messageData.Subject
+                    = $"Dhaf {options.Level}: SWITCHOVER PURGED | {eventData.DhafCluster}";
+
+                messageData.Body = $"The SWITCHOVER requirement to <b>{eventData.SwitchoverNc}</b> has been purged "
+                                 + $"in dhaf cluster <b>{eventData.DhafCluster}</b>."
+                                 + $"<br>Timestamp (UTC): <b>{timestamp}</b>";
+            }
+
+            if (options.Event == NotifierEvent.DhafNewLeader)
+            {
+                var eventData = (NotifierEventData.DhafNewLeader)options.EventData;
+
+                messageData.Subject
+                    = $"Dhaf {options.Level}: NEW DHAF LEADER | {eventData.DhafCluster}";
+
+                messageData.Body = $"Node <b>{eventData.Leader}</b> is the LEADER "
+                                 + $"of the dhaf claster <b>{eventData.DhafCluster}</b> now."
+                                 + $"<br>Timestamp (UTC): <b>{timestamp}</b>";
             }
 
             if (messageData.Subject is null)
@@ -182,7 +203,6 @@ namespace Dhaf.Notifiers.Email
                 var eventDataJson = JsonSerializer.Serialize(options.EventData, options.EventData.GetType());
                 var defBody = $"An unexpected event occurred in dhaf cluster <b>{options.EventData.DhafCluster}</b>."
                             + $"<br>Timestamp (UTC): <b>{timestamp}</b>"
-                            + $"<br>Domain: <b>{options.EventData.Domain}</b>"
                             + $"<br>Event: <b>{options.Event}</b>"
                             + $"<br>EventData.Type: <b>{options.EventData.GetType()}</b>"
                             + $"<br>EventData.Json: <pre>{eventDataJson}</pre>";

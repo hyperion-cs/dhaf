@@ -61,5 +61,7 @@ namespace Dhaf.HealthCheckers.Exec
 
             return new HealthStatus { Healthy = false };
         }
+
+        public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role) { }
     }
 }

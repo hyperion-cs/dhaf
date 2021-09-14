@@ -1,6 +1,7 @@
 ﻿using Dhaf.Core;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -21,6 +22,14 @@ namespace Dhaf.Notifiers.Telegram
         private IExtensionStorageProvider _storage;
 
         private TelegramBotClient _botClient;
+
+        private static List<Func<ApiRequestException, bool>> _unavailableSubResponses = new()
+        {
+            (e) => e.ErrorCode == 400 && e.Message.Contains("chat not found"),
+            (e) => e.ErrorCode == 403 && e.Message.Contains("bot was kicked")
+        };
+
+        protected DhafNodeRole _currentDhafNodeRole = DhafNodeRole.Follower;
 
         public string ExtensionName => "tg";
 
@@ -59,8 +68,6 @@ namespace Dhaf.Notifiers.Telegram
             var me = await _botClient.GetMeAsync();
             _logger.LogTrace($"{Sign} Hello! I'm {me.FirstName} with id <{me.Id}>.");
 
-            _handleUpdatesWithIntervalTask = HandleUpdatesWithInterval();
-
             _logger.LogInformation($"{Sign} Init OK.");
         }
 
@@ -81,18 +88,23 @@ namespace Dhaf.Notifiers.Telegram
                 }
                 catch (ApiRequestException e)
                 {
-                    if (e.ErrorCode == 400 && e.Message.Contains("chat not found"))
-                    {
-                        await DeleteSubscriber(sub);
-
-                        _logger.LogWarning($"{Sign} Chat with {sub} not found. It will be removed from the list of notification subscribers.");
-                    }
-                    else
-                    {
-                        _logger.LogError($"{Sign} Error {e.ErrorCode}: {e.Message}");
-                    }
+                    await ProcessPossibleUnavailableSubscriber(e, sub);
                 }
                 catch { }
+            }
+        }
+
+        protected async Task ProcessPossibleUnavailableSubscriber(ApiRequestException e, long sub)
+        {
+            if (_unavailableSubResponses.Any(x => x(e)))
+            {
+                await DeleteSubscriber(sub);
+
+                _logger.LogWarning($"{Sign} Chat with {sub} is unavailable. It will be removed from the list of notification subscribers.");
+            }
+            else
+            {
+                _logger.LogError($"{Sign} Error {e.ErrorCode}: {e.Message}");
             }
         }
 
@@ -101,27 +113,23 @@ namespace Dhaf.Notifiers.Telegram
             var message = string.Empty;
 
             var dhafCluster = MdEscape(options.EventData.DhafCluster);
-            var domain = MdEscape(options.EventData.Domain);
-            var timestamp = MdEscape(options.EventData.Timestamp.ToString("F", CultureInfo.InvariantCulture));
+            var timestamp = MdEscape(options.EventData.UtcTimestamp.ToString("F", CultureInfo.InvariantCulture));
 
             if (options.Event == NotifierEvent.ServiceUp
                  || options.Event == NotifierEvent.ServiceDown)
             {
-                var eventData = (ServiceHealthChangedEventData)options.EventData;
-
                 var verb = options.Event == NotifierEvent.ServiceUp ? "UP" : "DOWN";
                 var longVerb = verb == "UP" ? $"healthy \\(*UP*\\)" : $"unhealthy \\(*DOWN*\\)";
 
                 message = $"The service in dhaf cluster "
                  + $"*{dhafCluster}* is {longVerb}\\."
-                 + $"\n\nTimestamp \\(UTC\\): *{timestamp}*"
-                 + $"\nDomain: *{domain}*";
+                 + $"\n\nTimestamp \\(UTC\\): *{timestamp}*";
             }
 
             if (options.Event == NotifierEvent.DhafNodeUp
                  || options.Event == NotifierEvent.DhafNodeDown)
             {
-                var eventData = (DhafNodeHealthChangedEventData)options.EventData;
+                var eventData = (NotifierEventData.DhafNodeHealthChanged)options.EventData;
 
                 var verb = options.Event == NotifierEvent.DhafNodeUp ? "UP" : "DOWN";
                 var longVerb = verb == "UP" ? $"healthy \\(*UP*\\)" : $"unhealthy \\(*DOWN*\\)";
@@ -129,15 +137,14 @@ namespace Dhaf.Notifiers.Telegram
 
                 message = $"The dhaf node *{nodeName}* in dhaf cluster "
                  + $"*{dhafCluster}* is {longVerb}\\."
-                 + $"\n\nTimestamp \\(UTC\\): *{timestamp}*"
-                 + $"\nDomain: *{domain}*";
+                 + $"\n\nTimestamp \\(UTC\\): *{timestamp}*";
             }
 
             if (options.Event == NotifierEvent.Failover
                  || options.Event == NotifierEvent.Switchover
                  || options.Event == NotifierEvent.Switching)
             {
-                var eventData = (CurrentNcChangedEventData)options.EventData;
+                var eventData = (NotifierEventData.CurrentNcChanged)options.EventData;
                 var verb = options.Event.ToString().ToUpper();
 
                 var fromNc = MdEscape(eventData.FromNc);
@@ -145,32 +152,49 @@ namespace Dhaf.Notifiers.Telegram
 
                 message = $"There was a network configuration {verb} from *{fromNc}* "
                  + $"to *{toNc}* in dhaf cluster *{dhafCluster}*\\."
-                 + $"\n\nTimestamp \\(UTC\\): *{timestamp}*"
-                 + $"\nDomain: *{domain}*";
+                 + $"\n\nTimestamp \\(UTC\\): *{timestamp}*";
             }
 
             if (options.Event == NotifierEvent.NcUp)
             {
-                var eventData = (NcHealthChangedEventData)options.EventData;
+                var eventData = (NotifierEventData.NcHealthChanged)options.EventData;
                 var ncName = MdEscape(eventData.NcName);
 
                 message = $"The network configuration *{ncName}* in dhaf cluster "
                                  + $"*{dhafCluster}* is healthy \\(*UP*\\)\\."
-                                 + $"\n\nTimestamp \\(UTC\\): *{timestamp}*"
-                                 + $"\nDomain: *{domain}*";
+                                 + $"\n\nTimestamp \\(UTC\\): *{timestamp}*";
             }
 
             if (options.Event == NotifierEvent.NcDown)
             {
-                var eventData = (NcHealthChangedEventData)options.EventData;
+                var eventData = (NotifierEventData.NcHealthChanged)options.EventData;
                 var ncName = MdEscape(eventData.NcName);
                 var reason = MdEscape(eventData.Reason);
 
                 message = $"The network configuration *{ncName}* in dhaf cluster "
                                  + $"*{dhafCluster}* is unhealthy \\(*DOWN*\\)\\."
                                  + $"\n\nTimestamp \\(UTC\\): *{timestamp}*"
-                                 + $"\nDomain: *{domain}*"
                                  + $"\n*Reason*: {reason}";
+            }
+
+            if (options.Event == NotifierEvent.SwitchoverPurged)
+            {
+                var eventData = (NotifierEventData.SwitchoverPurged)options.EventData;
+                var switchoverNc = MdEscape(eventData.SwitchoverNc);
+
+                message = $"The SWITCHOVER requirement to *{switchoverNc}* has been purged "
+                        + $"in dhaf cluster *{dhafCluster}*\\."
+                        + $"\n\nTimestamp \\(UTC\\): *{timestamp}*";
+            }
+
+            if (options.Event == NotifierEvent.DhafNewLeader)
+            {
+                var eventData = (NotifierEventData.DhafNewLeader)options.EventData;
+                var leader = MdEscape(eventData.Leader);
+
+                message = $"Node *{leader}* is the LEADER "
+                        + $"of the dhaf claster *{dhafCluster}*\\ now\\."
+                        + $"\n\nTimestamp \\(UTC\\): *{timestamp}*";
             }
 
             if (message == string.Empty)
@@ -181,7 +205,6 @@ namespace Dhaf.Notifiers.Telegram
 
                 message = $"An unexpected event occurred in dhaf cluster *{dhafCluster}*\\."
                             + $"\n\nTimestamp \\(UTC\\): *{timestamp}*"
-                            + $"\nDomain: *{domain}*"
                             + $"\nEvent: *{options.Event}*"
                             + $"\nEventData\\.Type: *{eventDataType}*"
                             + $"\nEventData\\.Json:\n```\n{eventDataJsonEscaped}\n```";
@@ -215,6 +238,27 @@ namespace Dhaf.Notifiers.Telegram
             }
 
             return result.ToString();
+        }
+
+        public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role)
+        {
+            _currentDhafNodeRole = role;
+
+            if (!_handleUpdatesWithIntervalCts.IsCancellationRequested)
+            {
+                _handleUpdatesWithIntervalCts.Cancel();
+            }
+
+            if (_handleUpdatesWithIntervalTask is not null)
+            {
+                await _handleUpdatesWithIntervalTask;
+            }
+
+            if (_currentDhafNodeRole == DhafNodeRole.Leader)
+            {
+                _handleUpdatesWithIntervalCts = new();
+                _handleUpdatesWithIntervalTask = HandleUpdatesWithInterval(_handleUpdatesWithIntervalCts.Token);
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace Dhaf.Node
+﻿namespace Dhaf.Core
 {
     public enum DhafNodeRole
     {
