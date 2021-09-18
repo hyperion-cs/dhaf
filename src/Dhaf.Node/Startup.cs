@@ -53,10 +53,10 @@ namespace Dhaf.Node
 
             var extInitorTasks = parsedClusterConfig.Services.Select(async servConf =>
             {
-                dhafNodeLogger.LogDebug($"Switcher provider in <{servConf.Name}> is <{servConf.Switcher.ExtensionName}>.");
+                dhafNodeLogger.LogDebug($"Switcher provider for <{servConf.Name}> is <{servConf.Switcher.ExtensionName}>.");
 
                 dhafNodeLogger
-                    .LogDebug($"Health checker provider in <{servConf.Name}> is <{servConf.HealthChecker.ExtensionName}>.");
+                    .LogDebug($"Health checker provider for <{servConf.Name}> is <{servConf.HealthChecker.ExtensionName}>.");
 
                 var healthCheckerTemplate = extensionsScope.HealthCheckers
                     .First(x => x.Instance.ExtensionName == servConf.HealthChecker.ExtensionName);

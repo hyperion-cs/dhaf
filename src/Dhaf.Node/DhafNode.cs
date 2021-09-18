@@ -332,7 +332,7 @@ namespace Dhaf.Node
             {
                 if (service.PanicMode)
                 {
-                    _logger.LogError("Panic mode is ON. All NCs are unhealthy. The service is DOWN and dhaf is physically unable to fix the situation on its own.");
+                    _logger.LogError($"Panic mode in service <{service.Name}> is ON. All NCs are unhealthy. The service <{service.Name}> is DOWN and dhaf is physically unable to fix the situation on its own.");
 
                     var eventData = await GetBaseEventData<NotifierEventData.ServiceHealthChanged>(service.Name);
                     await PushToNotifiers(new NotifierPushOptions
@@ -344,7 +344,7 @@ namespace Dhaf.Node
                 }
                 else
                 {
-                    _logger.LogInformation("Panic mode is OFF.");
+                    _logger.LogInformation($"Panic mode in service <{service.Name}> is OFF.");
 
                     var eventData = await GetBaseEventData<NotifierEventData.ServiceHealthChanged>(service.Name);
                     await PushToNotifiers(new NotifierPushOptions
@@ -371,7 +371,7 @@ namespace Dhaf.Node
             {
                 if (switchoverRequirementInStorage is null)
                 {
-                    _logger.LogInformation("The switchover requirement are purged.");
+                    _logger.LogInformation($"The switchover requirement in service <{service.Name}> are purged.");
 
                     var eventData = await GetBaseEventData<NotifierEventData.SwitchoverPurged>(service.Name);
                     eventData.SwitchoverNc = service.SwitchoverLastRequirementInStorage;
@@ -385,7 +385,7 @@ namespace Dhaf.Node
                 }
                 else
                 {
-                    _logger.LogInformation($"There is switchover requirement to <{switchoverRequirementInStorage}>. No action is taken because the current configuration is already so.");
+                    _logger.LogInformation($"There is switchover requirement to <{switchoverRequirementInStorage}> in service <{service.Name}>. No action is taken because the current configuration is already so.");
                 }
             }
 
@@ -396,11 +396,11 @@ namespace Dhaf.Node
 
             if (autoSwitchRequirement.Failover)
             {
-                _logger.LogWarning($"Current NC <{service.CurrentNetworkConfigurationId}> is DOWN. A failover has been started...");
+                _logger.LogWarning($"Current NC <{service.Name}/{service.CurrentNetworkConfigurationId}> is DOWN. A failover has been started...");
 
                 if (switchoverRequirementInStorage != null)
                 {
-                    _logger.LogWarning("Purge switchover requirement because failover is required...");
+                    _logger.LogWarning($"Purge switchover requirement in service <{service.Name}> because failover is required...");
                     await PurgeSwitchover(service.Name);
                 }
 
@@ -428,7 +428,7 @@ namespace Dhaf.Node
 
                 if (proposedHost.Healthy)
                 {
-                    _logger.LogInformation("Switchover is requested...");
+                    _logger.LogInformation($"Switchover in service <{service.Name}> is requested...");
                     await service.Switcher.Switch(new SwitcherSwitchOptions
                     {
                         NcId = switchoverRequirement.SwitchTo,
@@ -448,7 +448,7 @@ namespace Dhaf.Node
                 }
                 else
                 {
-                    _logger.LogError($"Swithover is requested but it is not possible because the specified network configuration <{switchoverRequirement.SwitchTo}> is unhealthy. The requirement to switchover will be purged.");
+                    _logger.LogError($"Swithover in service <{service.Name}> is requested but it is not possible because the specified network configuration <{switchoverRequirement.SwitchTo}> is unhealthy. The requirement to switchover will be purged.");
 
                     await PurgeSwitchover(service.Name);
                     mustSwitching = autoSwitchRequirement.IsRequired && !autoSwitchRequirement.Failover;
@@ -457,7 +457,7 @@ namespace Dhaf.Node
 
             if (mustSwitching)
             {
-                _logger.LogInformation($"Switching to a higher priority healthy NC <{autoSwitchRequirement.SwitchTo}>...");
+                _logger.LogInformation($"Switching to a higher priority healthy NC <{service.Name}/{autoSwitchRequirement.SwitchTo}>...");
 
                 await service.Switcher.Switch(new SwitcherSwitchOptions
                 {
@@ -1020,7 +1020,8 @@ namespace Dhaf.Node
                 }
                 catch
                 {
-                    _logger.LogError($"Error in sending a notification via the <{x.ExtensionName}> provider.");
+                    var serviceInfo = opt.EventData.Service is null ? string.Empty : $" for service <{opt.EventData.Service}>";
+                    _logger.LogError($"Error in sending a notification{serviceInfo} via the <{x.ExtensionName}> provider.");
                 }
             });
 
