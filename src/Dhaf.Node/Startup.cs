@@ -51,6 +51,11 @@ namespace Dhaf.Node
 
             var services = new ConcurrentBag<DhafService>();
 
+            if (!parsedClusterConfig.Services.Any())
+            {
+                throw new ArgumentException($"No services were found in the configuration. There is no reason for dhaf to work and it terminates.");
+            }
+
             var extInitorTasks = parsedClusterConfig.Services.Select(async servConf =>
             {
                 dhafNodeLogger.LogDebug($"Switcher provider for <{servConf.Name}> is <{servConf.Switcher.ExtensionName}>.");

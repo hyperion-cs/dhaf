@@ -38,6 +38,10 @@ namespace Dhaf.Node
                     await startup.Go();
                 }
             }
+            catch (ArgumentException ex)
+            {
+                logger.Fatal($"{ex.Message}");
+            }
             catch (Exception ex)
             {
                 logger.Fatal(ex, "Further work of the node is impossible because of a fatal error.");
