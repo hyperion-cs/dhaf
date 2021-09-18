@@ -1,3 +1,5 @@
+# Systemd Template
+
 1. Create systemd service file (it's standard path for the most Linux distros, but you should check it before):
 ```shell
 nano /etc/systemd/system/dhaf.service
@@ -24,7 +26,7 @@ WantedBy=multi-user.target
 systemctl daemon-reload
 
 ```
-4. Test fresh Dhaf service:
+4. Test dhaf service:
 ```shell
 systemctl restart dhaf.service
 # Check status, it should be active
