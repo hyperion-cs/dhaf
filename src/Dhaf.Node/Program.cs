@@ -1,4 +1,5 @@
 ﻿using CommandLine;
+using Dhaf.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -38,13 +39,13 @@ namespace Dhaf.Node
                     await startup.Go();
                 }
             }
-            catch (ArgumentException ex)
+            catch (ConfigParsingException ex)
             {
-                logger.Fatal($"{ex.Message}");
+                logger.Fatal($"Config parser error {ex.Code}: {ex.Message}");
             }
             catch (Exception ex)
             {
-                logger.Fatal(ex, "Further work of the node is impossible because of a fatal error.");
+                logger.Fatal($"Further work of the node is impossible because of a fatal error:\n{ex.Message}");
             }
             finally
             {

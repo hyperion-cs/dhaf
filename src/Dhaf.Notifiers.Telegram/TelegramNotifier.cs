@@ -94,6 +94,27 @@ namespace Dhaf.Notifiers.Telegram
             }
         }
 
+        public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role)
+        {
+            _currentDhafNodeRole = role;
+
+            if (!_handleUpdatesWithIntervalCts.IsCancellationRequested)
+            {
+                _handleUpdatesWithIntervalCts.Cancel();
+            }
+
+            if (_handleUpdatesWithIntervalTask is not null)
+            {
+                await _handleUpdatesWithIntervalTask;
+            }
+
+            if (_currentDhafNodeRole == DhafNodeRole.Leader)
+            {
+                _handleUpdatesWithIntervalCts = new();
+                _handleUpdatesWithIntervalTask = HandleUpdatesWithInterval(_handleUpdatesWithIntervalCts.Token);
+            }
+        }
+
         protected async Task ProcessPossibleUnavailableSubscriber(ApiRequestException e, long sub)
         {
             if (_unavailableSubResponses.Any(x => x(e)))
@@ -239,27 +260,6 @@ namespace Dhaf.Notifiers.Telegram
             }
 
             return result.ToString();
-        }
-
-        public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role)
-        {
-            _currentDhafNodeRole = role;
-
-            if (!_handleUpdatesWithIntervalCts.IsCancellationRequested)
-            {
-                _handleUpdatesWithIntervalCts.Cancel();
-            }
-
-            if (_handleUpdatesWithIntervalTask is not null)
-            {
-                await _handleUpdatesWithIntervalTask;
-            }
-
-            if (_currentDhafNodeRole == DhafNodeRole.Leader)
-            {
-                _handleUpdatesWithIntervalCts = new();
-                _handleUpdatesWithIntervalTask = HandleUpdatesWithInterval(_handleUpdatesWithIntervalCts.Token);
-            }
         }
     }
 }

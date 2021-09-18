@@ -128,6 +128,13 @@ namespace Dhaf.Switchers.Cloudflare
             _logger.LogInformation($"{Sign} Successfully switched to NC <{nc.Id}>.");
         }
 
+        public async Task<string> GetCurrentNetworkConfigurationId()
+        {
+            return _currentNetworkConfigurationId;
+        }
+
+        public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role) { }
+
         protected async Task AssertToken()
         {
             var request = new RestRequest($"zones");
@@ -198,12 +205,5 @@ namespace Dhaf.Switchers.Cloudflare
 
             _logger.LogDebug($"{Sign} <{type}> record for the domain {domainName} has been successfully updated.");
         }
-
-        public async Task<string> GetCurrentNetworkConfigurationId()
-        {
-            return _currentNetworkConfigurationId;
-        }
-
-        public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role) { }
     }
 }

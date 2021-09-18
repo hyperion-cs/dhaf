@@ -11,7 +11,7 @@
         public int? FetchDhafNodeStatusesInterval { get; set; }
         public int? TactInterval { get; set; }
 
-        public ClusterDhafWebApiConfig WebApi { get; set; } = new ClusterDhafWebApiConfig();
+        public ClusterDhafWebApiConfig WebApi { get; set; } = new();
     }
 
     public class ClusterDhafWebApiConfig

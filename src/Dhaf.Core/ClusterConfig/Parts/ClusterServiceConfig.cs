@@ -9,7 +9,7 @@ namespace Dhaf.Core
         public string Domain { get; set; }
 
         [YamlMember(Alias = "network-conf")]
-        public List<ClusterServiceNetworkConfig> NetworkConfigurations { get; set; }
+        public List<ClusterServiceNetworkConfig> NetworkConfigurations { get; set; } = new();
         public ISwitcherConfig Switcher { get; set; }
         public IHealthCheckerConfig HealthChecker { get; set; }
     }

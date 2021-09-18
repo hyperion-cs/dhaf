@@ -18,11 +18,14 @@ namespace Dhaf.HealthCheckers.Web
         private InternalConfig _internalConfig;
         private ClusterServiceConfig _serviceConfig;
 
+        protected string _requestSchema;
+
         public string ExtensionName => "web";
         public string Sign => $"[{_serviceConfig.Name}/{ExtensionName} hc]";
 
         public Type ConfigType => typeof(Config);
         public Type InternalConfigType => typeof(InternalConfig);
+
 
         public async Task Init(HealthCheckerInitOptions options)
         {
@@ -40,6 +43,8 @@ namespace Dhaf.HealthCheckers.Web
                 Timeout = _config.Timeout ?? _internalConfig.DefTimeout
             };
 
+            _requestSchema = PrepareSchema(_config.Schema ?? _internalConfig.HttpSchema);
+
             _logger.LogInformation($"{Sign} Init OK.");
         }
 
@@ -50,14 +55,13 @@ namespace Dhaf.HealthCheckers.Web
                 throw new Exception("The HTTP client is not initialized.");
             }
 
-            var schema = PrepareAndCheckSchema(_config.Schema ?? _internalConfig.HttpSchema);
             var port = _config.Port
-                ?? (schema == _internalConfig.HttpSchema
+                ?? (_requestSchema == _internalConfig.HttpSchema
                        ? _internalConfig.DefHttpPort : _internalConfig.DefHttpsPort);
 
             var nc = _serviceConfig.NetworkConfigurations.FirstOrDefault(x => x.Id == options.NcId);
 
-            var uri = new Uri($"{schema}://{nc.IP}:{port}");
+            var uri = new Uri($"{_requestSchema}://{nc.IP}:{port}");
 
             const int RETRYING_INIT_VALUE = 0;
 
@@ -100,25 +104,58 @@ namespace Dhaf.HealthCheckers.Web
             return new HealthStatus { Healthy = false, ReasonCode = (int)downReason };
         }
 
-        protected string PrepareAndCheckSchema(string schema)
+        public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role) { }
+
+        public async Task<string> ResolveUnhealthinessReasonCode(int code)
+        {
+            return DownReasonResolver.Resolve(code);
+        }
+
+        protected bool CheckHttpCode(HttpStatusCode code, string codeMasks)
+        {
+            var exceptedCodes = codeMasks
+                .Split(_internalConfig.ExpectedCodesSeparator, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim());
+
+            var wildcard = _internalConfig.ExpectedCodesWildcard;
+            var checkCodeRegexes = exceptedCodes.Select(x => new Regex("^" + x.Replace(wildcard, "[0-9]") + "$"));
+            var isCodeOk = checkCodeRegexes.Any(x => x.IsMatch(((int)code).ToString()));
+
+            return isCodeOk;
+        }
+
+        protected async Task ConfigCheck()
+        {
+            if (_config.ExpectedCodes is not null)
+            {
+                await CheckHttpCodesMask(_config.ExpectedCodes);
+            }
+
+            await CheckHttpCodesMask(_internalConfig.DefExpectedCodes);
+
+            if (_config.Schema is not null)
+            {
+                var preparedSchema = PrepareSchema(_config.Schema);
+
+                if (preparedSchema != _internalConfig.HttpSchema && preparedSchema != _internalConfig.HttpsSchema)
+                {
+                    throw new ConfigParsingException(1802, $"{Sign} Incorrect URI scheme is specified (only http/https allowed).");
+                }
+            }
+        }
+
+        protected string PrepareSchema(string schema)
         {
             schema = schema
                 .Trim()
                 .ToLower();
 
-            if (schema != _internalConfig.HttpSchema && schema != _internalConfig.HttpsSchema)
-            {
-                throw new ArgumentException("Incorrect URI scheme is specified (only http/https allowed).");
-            }
-
             return schema;
         }
 
-        protected bool CheckHttpCode(HttpStatusCode code, string codeMasks)
+        protected async Task CheckHttpCodesMask(string codes)
         {
-            // TODO: Do configuration checks and compile regular expressions beforehand and only once.
-
-            var exceptedCodes = codeMasks
+            var exceptedCodes = codes
                 .Split(_internalConfig.ExpectedCodesSeparator, StringSplitOptions.RemoveEmptyEntries)
                 .Select(x => x.Trim());
 
@@ -130,20 +167,8 @@ namespace Dhaf.HealthCheckers.Web
 
             if (!isAllExpectedCodesOk)
             {
-                throw new ArgumentException("There is a syntax error in the list of allowed HTTP response codes.");
+                throw new ConfigParsingException(1801, $"{Sign} There is a syntax error in the list of allowed HTTP response codes.");
             }
-
-            var checkCodeRegexes = exceptedCodes.Select(x => new Regex("^" + x.Replace(wildcard, "[0-9]") + "$"));
-            var isCodeOk = checkCodeRegexes.Any(x => x.IsMatch(((int)code).ToString()));
-
-            return isCodeOk;
-        }
-
-        public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role) { }
-
-        public async Task<string> ResolveUnhealthinessReasonCode(int code)
-        {
-            return DownReasonResolver.Resolve(code);
         }
     }
 }

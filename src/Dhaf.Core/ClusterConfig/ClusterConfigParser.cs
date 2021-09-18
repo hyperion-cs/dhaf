@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -68,7 +69,7 @@ namespace Dhaf.Core
 
                 if (switcher == null)
                 {
-                    throw new ArgumentException($"Switcher <{service.Switcher.ExtensionName}> is not found in any of the extensions.");
+                    throw new ConfigParsingException(1405, $"Switcher <{service.Switcher.ExtensionName}> is not found in any of the extensions.");
                 }
 
                 var healthChecker = ExtensionsScope.HealthCheckers
@@ -76,7 +77,7 @@ namespace Dhaf.Core
 
                 if (healthChecker == null)
                 {
-                    throw new ArgumentException($"Health checker <{service.HealthChecker.ExtensionName}> is not found in any of the extensions.");
+                    throw new ConfigParsingException(1404, $"Health checker <{service.HealthChecker.ExtensionName}> is not found in any of the extensions.");
                 }
 
                 var existingSwMap = realMap.FirstOrDefault(x => x.ExtensionName == switcher.Instance.ExtensionName
@@ -105,7 +106,7 @@ namespace Dhaf.Core
 
                 if (notifier == null)
                 {
-                    throw new ArgumentException($"Notifier <{notifierConfig.ExtensionName}> is not found in any of the extensions.");
+                    throw new ConfigParsingException(1406, $"Notifier <{notifierConfig.ExtensionName}> is not found in any of the extensions.");
                 }
 
                 var existingMap = realMap.FirstOrDefault(x => x.ExtensionName == notifier.Instance.ExtensionName
@@ -121,7 +122,70 @@ namespace Dhaf.Core
             ectc.Mode = EctcMode.ConvertWithMap;
 
             var secondPhase = des.Deserialize<ClusterConfig>(configYaml);
+            await ConfigCommonCheck(secondPhase);
+
             return secondPhase;
+        }
+
+        public async Task ConfigCommonCheck(ClusterConfig config)
+        {
+            var nameRegex = new Regex(@"^[a-zA-Z0-9\-_]{1,}$");
+
+            static string incorrectNameErr(string prop, string currVal) => $"Incorrect value for \"{prop}\" in dhaf config. " +
+                $"The name is required and must contain only letters of the " +
+                $"Latin alphabet and hyphen \"-\" / underscore \"_\" characters. " +
+                $"Current value: \"{currVal ?? "<none>"}\".";
+
+            if (!nameRegex.IsMatch(config.Dhaf.NodeName ?? string.Empty))
+            {
+                throw new ConfigParsingException(1400, incorrectNameErr("dhaf.node-name", config.Dhaf.NodeName));
+            }
+
+            if (!nameRegex.IsMatch(config.Dhaf.ClusterName ?? string.Empty))
+            {
+                throw new ConfigParsingException(1400, incorrectNameErr("dhaf.cluster-name", config.Dhaf.ClusterName));
+            }
+
+            if (!config.Services.Any())
+            {
+                throw new ConfigParsingException(1401, "No services were found in the dhaf config. There is no reason for dhaf to work.");
+            }
+
+            foreach (var serivce in config.Services)
+            {
+                if (!nameRegex.IsMatch(serivce.Name ?? string.Empty))
+                {
+                    throw new ConfigParsingException(1400, incorrectNameErr("service.name", serivce.Name));
+                }
+
+                if (string.IsNullOrEmpty(serivce.Domain))
+                {
+                    throw new ConfigParsingException(1403, $"Domain name is not set for the \"{serivce.Name}\" service.");
+                }
+
+                if (!serivce.NetworkConfigurations.Any())
+                {
+                    throw new ConfigParsingException(1402, $"No network configurations were found for the \"{serivce.Name}\" service.");
+                }
+
+                foreach (var nc in serivce.NetworkConfigurations)
+                {
+                    if (!nameRegex.IsMatch(nc.Id ?? string.Empty))
+                    {
+                        throw new ConfigParsingException(1400,
+                            incorrectNameErr($"service <{serivce.Name}>.network-conf.name", nc.Id));
+                    }
+                }
+            }
+
+            foreach (var ntf in config.Notifiers)
+            {
+                if (!nameRegex.IsMatch(ntf.Name ?? string.Empty))
+                {
+                    throw new ConfigParsingException(1400,
+                        incorrectNameErr($"notifier.name", ntf.Name));
+                }
+            }
         }
 
         public async Task<T> ParseExtensionInternal<T>(string path, Type internalConfigType)
