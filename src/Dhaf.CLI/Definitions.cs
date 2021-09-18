@@ -2,6 +2,6 @@
 {
     static class Definitions
     {
-        public const string APPLICATION_ALIAS = "dhaf";
+        public const string APPLICATION_ALIAS = "dhaf.cli";
     }
 }
