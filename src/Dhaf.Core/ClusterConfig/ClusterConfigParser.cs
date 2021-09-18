@@ -176,6 +176,27 @@ namespace Dhaf.Core
                             incorrectNameErr($"service <{serivce.Name}>.network-conf.name", nc.Id));
                     }
                 }
+
+                var uniqueNcNamesCount = serivce.NetworkConfigurations
+                    .Select(x => x.Id)
+                    .Distinct()
+                    .Count();
+
+                if (uniqueNcNamesCount != serivce.NetworkConfigurations.Count)
+                {
+                    throw new ConfigParsingException(1410, $"Not all network configuration names " +
+                        $"in service \"{serivce.Name}\" are unique.");
+                }
+            }
+
+            var uniqueServiceNamesCount = config.Services
+                    .Select(x => x.Name)
+                    .Distinct()
+                    .Count();
+
+            if (uniqueServiceNamesCount != config.Services.Count)
+            {
+                throw new ConfigParsingException(1411, $"Not all service names are unique.");
             }
 
             foreach (var ntf in config.Notifiers)
@@ -185,6 +206,16 @@ namespace Dhaf.Core
                     throw new ConfigParsingException(1400,
                         incorrectNameErr($"notifier.name", ntf.Name));
                 }
+            }
+
+            var uniqueNotifierNamesCount = config.Notifiers
+                    .Select(x => x.Name)
+                    .Distinct()
+                    .Count();
+
+            if (uniqueNotifierNamesCount != config.Notifiers.Count)
+            {
+                throw new ConfigParsingException(1411, $"Not all notifier names are unique.");
             }
         }
 

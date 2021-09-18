@@ -1,7 +1,7 @@
 ﻿{
   "entryPoint": "Dhaf.Notifiers.Email.dll",
   "internalConfiguration": {
-    "defName": "anonymous",
+    "defName": "email-anon",
     "senderName": "Dhaf Notifier",
     "securitySslFlag": "ssl",
     "timeout": 10000
