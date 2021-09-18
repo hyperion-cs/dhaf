@@ -59,27 +59,44 @@ namespace Dhaf.Core
                 return firstPhase;
             }
 
-            var switcher = ExtensionsScope.Switchers
-                .FirstOrDefault(x => x.Instance.ExtensionName == firstPhase.Switcher.ExtensionName);
+            var realMap = new List<ExtensionConfigTypeMap>();
 
-            if (switcher == null)
+            foreach (var service in firstPhase.Services)
             {
-                throw new ArgumentException($"Switcher <{firstPhase.Switcher.ExtensionName}> is not found in any of the extensions.");
+                var switcher = ExtensionsScope.Switchers
+                    .FirstOrDefault(x => x.Instance.ExtensionName == service.Switcher.ExtensionName);
+
+                if (switcher == null)
+                {
+                    throw new ArgumentException($"Switcher <{service.Switcher.ExtensionName}> is not found in any of the extensions.");
+                }
+
+                var healthChecker = ExtensionsScope.HealthCheckers
+                    .FirstOrDefault(x => x.Instance.ExtensionName == service.HealthChecker.ExtensionName);
+
+                if (healthChecker == null)
+                {
+                    throw new ArgumentException($"Health checker <{service.HealthChecker.ExtensionName}> is not found in any of the extensions.");
+                }
+
+                var existingSwMap = realMap.FirstOrDefault(x => x.ExtensionName == switcher.Instance.ExtensionName
+                                                    && x.ConfigTypeInterface == typeof(ISwitcherConfig));
+
+                var existingHcMap = realMap.FirstOrDefault(x => x.ExtensionName == healthChecker.Instance.ExtensionName
+                                                    && x.ConfigTypeInterface == typeof(IHealthCheckerConfig));
+
+                if (existingSwMap is null)
+                {
+                    realMap.Add(new ExtensionConfigTypeMap(switcher.Instance.ExtensionName,
+                                    typeof(ISwitcherConfig), switcher.Instance.ConfigType));
+                }
+
+                if (existingHcMap is null)
+                {
+                    realMap.Add(new ExtensionConfigTypeMap(healthChecker.Instance.ExtensionName,
+                                    typeof(IHealthCheckerConfig), healthChecker.Instance.ConfigType));
+                }
             }
-
-            var healthChecker = ExtensionsScope.HealthCheckers
-                .FirstOrDefault(x => x.Instance.ExtensionName == firstPhase.HealthCheck.ExtensionName);
-
-            if (healthChecker == null)
-            {
-                throw new ArgumentException($"Health checker <{firstPhase.HealthCheck.ExtensionName}> is not found in any of the extensions.");
-            }
-
-            var realMap = new List<ExtensionConfigTypeMap>()
-            {
-                new ExtensionConfigTypeMap(typeof(ISwitcherConfig), switcher.Instance.ConfigType),
-                new ExtensionConfigTypeMap(typeof(IHealthCheckerConfig), healthChecker.Instance.ConfigType),
-            };
 
             foreach (var notifierConfig in firstPhase.Notifiers)
             {
@@ -96,7 +113,7 @@ namespace Dhaf.Core
                 if (existingMap is null)
                 {
                     realMap.Add(new ExtensionConfigTypeMap(notifier.Instance.ExtensionName,
-                    typeof(INotifierConfig), notifier.Instance.ConfigType));
+                                    typeof(INotifierConfig), notifier.Instance.ConfigType));
                 }
             }
 

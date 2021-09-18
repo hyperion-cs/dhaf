@@ -14,7 +14,7 @@ namespace Dhaf.CLI
             const int TABLE_WIDTH = 80;
 
             await PrepareRestClient(opt);
-            var request = new RestRequest($"service/status");
+            var request = new RestRequest($"service/status?serviceName={opt.ServiceName}");
 
             var response = await _restClient.GetAsync<RestApiResponse<ServiceStatus>>(request);
             if (!response.Success)
@@ -35,7 +35,7 @@ namespace Dhaf.CLI
             };
 
             summaryTable.Border(TableBorder.Ascii2);
-            summaryTable.Title = new TableTitle("Summary");
+            summaryTable.Title = new TableTitle($"Service \"{serviceStatus.Name}\" -> Summary");
             summaryTable.AddColumns("Key", "Value");
             summaryTable.AddRow("Service status", isUp);
             summaryTable.AddRow("Domain", serviceStatus.Domain);
@@ -49,7 +49,7 @@ namespace Dhaf.CLI
             };
 
             ncTable.Border(TableBorder.Ascii2);
-            ncTable.Title = new TableTitle("Network configurations");
+            ncTable.Title = new TableTitle($"Service \"{serviceStatus.Name}\" -> Network configurations");
             ncTable.AddColumns("Priority", "Name", "Healthy", "Status");
             ncTable.Columns[0].Centered();
             ncTable.Columns[1].Centered();

@@ -10,13 +10,16 @@ namespace Dhaf.CLI
         [Option('c', "config", Required = true, HelpText = "Configuration file.")]
         public string Config { get; set; }
 
+        [Option('s', "service", Required = true, HelpText = "Service name.")]
+        public string ServiceName { get; set; }
+
         [Usage(ApplicationAlias = Definitions.APPLICATION_ALIAS)]
         public static IEnumerable<Example> Examples
         {
             get
             {
-                yield return new Example("Show suitable network configurations for switchover using configuration file <config_file>",
-                    new SwitchoverCandidatesOptions { Config = "<config_file>" });
+                yield return new Example("Show suitable network configurations in service <s> for switchover using configuration file <config_file>",
+                    new SwitchoverCandidatesOptions { Config = "<config_file>", ServiceName = "<s>" });
             }
         }
     }

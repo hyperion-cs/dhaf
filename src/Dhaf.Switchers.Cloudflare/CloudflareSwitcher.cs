@@ -21,19 +21,20 @@ namespace Dhaf.Switchers.Cloudflare
         protected string _currentNetworkConfigurationId;
 
         public string ExtensionName => "cloudflare";
-        public string Sign => $"[{ExtensionName} sw]";
+        public string Sign => $"[{_serviceConfig.Name}/{ExtensionName} sw]";
 
         public Type ConfigType => typeof(Config);
         public Type InternalConfigType => typeof(InternalConfig);
 
         public async Task Init(SwitcherInitOptions options)
         {
+            _serviceConfig = options.ClusterServiceConfig;
             _logger = options.Logger;
+
             _logger.LogTrace($"{Sign} Init process...");
 
             _config = (Config)options.Config;
             _internalConfig = (InternalConfig)options.InternalConfig;
-            _serviceConfig = options.ClusterServiceConfig;
 
             _client = new RestClient(_internalConfig.BaseUrl);
 
@@ -131,14 +132,20 @@ namespace Dhaf.Switchers.Cloudflare
         {
             var request = new RestRequest($"zones");
             request.AddHeader("Authorization", $"Bearer {_config.ApiToken}");
-            var response = await _client.GetAsync<ResultDto<string>>(request);
-
-            if (response.Errors.Any())
+            try
             {
-                var error = response.Errors.First();
-                _logger.LogCritical($"{Sign} Error {error.Code}: {error.Message}.");
+                var response = await _client.GetAsync<ResultDto<string>>(request);
+                if (response.Errors.Any())
+                {
+                    var error = response.Errors.First();
+                    _logger.LogCritical($"{Sign} Error {error.Code}: {error.Message}.");
 
-                throw new ExtensionInitFailedException(Sign);
+                    throw new ExtensionInitFailedException(Sign);
+                }
+            }
+            catch (System.Net.WebException e)
+            {
+                _logger.LogCritical($"{Sign} WebException: {e.Message}");
             }
         }
 

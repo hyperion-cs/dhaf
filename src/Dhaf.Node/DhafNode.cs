@@ -17,24 +17,25 @@ namespace Dhaf.Node
     {
         Task TactWithInterval();
 
-        Task<ServiceStatus> GetServiceStatus();
+        Task<ServiceStatus> GetServiceStatus(string serviceName);
+        Task<IEnumerable<ServiceStatus>> GetServicesStatus();
         Task<DhafStatus> GetDhafClusterStatus();
 
         Task DecommissionDhafNode(string name);
 
-        Task Switchover(string ncId);
-        Task PurgeSwitchover();
-        Task<IEnumerable<SwitchoverCandidate>> GetSwitchoverCandidates();
+        Task Switchover(string serviceName, string ncId);
+        Task PurgeSwitchover(string serviceName);
+        Task<IEnumerable<SwitchoverCandidate>> GetSwitchoverCandidates(string serviceName);
     }
 
     public class DhafNode : IDhafNode
     {
         private readonly EtcdClient _etcdClient;
         private readonly DhafNodeBackgroundTasks _backgroundTasks;
-        private readonly ISwitcher _switcher;
-        private readonly IHealthChecker _healthChecker;
         private readonly IEnumerable<INotifier> _notifiers;
         private readonly ILogger<IDhafNode> _logger;
+
+        protected IEnumerable<DhafService> _services;
 
         /// <summary>
         /// The current role of the dhaf node.
@@ -42,20 +43,11 @@ namespace Dhaf.Node
         protected DhafNodeRole _role = DhafNodeRole.Follower;
 
         /// <summary>
-        /// The flag shows that all NC is unhealthy.
-        /// The service is DOWN and dhaf is physically unable to fix the situation on its own.
-        /// </summary>
-        protected bool _panicMode = false;
-
-        protected string _switchoverLastRequirementInStorage = null;
-
-        /// <summary>
         /// The etcd lease identifier for the leader key.
         /// </summary>
         protected long? _leaderLeaseId;
 
         protected string _lastKnownLeader;
-        protected string _currentNetworkConfigurationId;
 
         protected ClusterConfig _clusterConfig;
         protected DhafInternalConfig _dhafInternalConfig;
@@ -63,15 +55,11 @@ namespace Dhaf.Node
         protected Dictionary<string, DhafNodeStatus> _dhafNodeStatuses = new();
         protected Dictionary<string, DhafNodeStatus> _previousDhafNodeStatuses = new(); // For tracking changes.
 
-        protected IEnumerable<NetworkConfigurationStatus> _networkConfigurationStatuses;
-        protected IEnumerable<NetworkConfigurationStatus> _previousNetworkConfigurationStatuses; // For tracking changes.
-
         protected string _etcdClusterRoot { get => $"/{_clusterConfig.Dhaf.ClusterName}/"; }
 
         public DhafNode(ClusterConfig clusterConfig,
             DhafInternalConfig dhafInternalConfig,
-            ISwitcher switcher,
-            IHealthChecker healthChecker,
+            IEnumerable<DhafService> services,
             IEnumerable<INotifier> notifiers,
             EtcdClient etcdClient,
             ILogger<IDhafNode> logger)
@@ -79,8 +67,7 @@ namespace Dhaf.Node
             _clusterConfig = clusterConfig;
             _dhafInternalConfig = dhafInternalConfig;
 
-            _healthChecker = healthChecker;
-            _switcher = switcher;
+            _services = services;
             _notifiers = notifiers;
 
             _logger = logger;
@@ -101,16 +88,22 @@ namespace Dhaf.Node
             _backgroundTasks.HeartbeatWithIntervalTask = HeartbeatWithInterval();
         }
 
-        public async Task<ServiceStatus> GetServiceStatus()
+        public async Task<ServiceStatus> GetServiceStatus(string serviceName)
         {
-            var switchoverRequirement = await GetSwitchoverRequirementOrDefault();
+            var service = _services.FirstOrDefault(x => x.Name == serviceName);
+            if (service is null)
+            {
+                throw new RestApiException(1301, "No such service was found.");
+            }
 
-            var healthy = _networkConfigurationStatuses
+            var switchoverRequirement = await GetSwitchoverRequirementOrDefault(service);
+
+            var healthy = service.NetworkConfigurationStatuses
                 .Where(x => x.Healthy)
                 .Select(x => x.NcId)
                 .ToHashSet();
 
-            var ncs = _clusterConfig.Service.NetworkConfigurations
+            var ncs = service.NetworkConfigurations
                 .Select((nc, i) => new ServiceNcStatus
                 {
                     Name = nc.Id,
@@ -120,11 +113,20 @@ namespace Dhaf.Node
 
             return new ServiceStatus
             {
-                Domain = _clusterConfig.Service.Domain,
-                CurrentNcName = _currentNetworkConfigurationId,
+                Name = service.Name,
+                Domain = service.Domain,
+                CurrentNcName = service.CurrentNetworkConfigurationId,
                 NetworkConfigurations = ncs,
                 SwitchoverRequirement = switchoverRequirement
             };
+        }
+
+        public async Task<IEnumerable<ServiceStatus>> GetServicesStatus()
+        {
+            var getTasks = _services.Select(x => GetServiceStatus(x.Name));
+            var serviceStatuses = await Task.WhenAll(getTasks);
+
+            return serviceStatuses;
         }
 
         public async Task<DhafStatus> GetDhafClusterStatus()
@@ -160,10 +162,15 @@ namespace Dhaf.Node
             await _etcdClient.DeleteRangeAsync(serviceStatusPrefix + node.Name);
         }
 
-        public async Task Switchover(string ncId)
+        public async Task Switchover(string serviceName, string ncId)
         {
-            var ncStatus = _networkConfigurationStatuses.FirstOrDefault(x => x.NcId == ncId);
+            var service = _services.FirstOrDefault(x => x.Name == serviceName);
+            if (service is null)
+            {
+                throw new RestApiException(1301, "No such service was found.");
+            }
 
+            var ncStatus = service.NetworkConfigurationStatuses.FirstOrDefault(x => x.NcId == ncId);
             if (ncStatus == null)
             {
                 throw new RestApiException(1101, "There is no network configuration with this ID.");
@@ -174,10 +181,10 @@ namespace Dhaf.Node
                 throw new RestApiException(1102, "Cannot switchover to the specified network configuration because it is unhealthy.");
             }
 
-            await PurgeSwitchover();
+            await PurgeSwitchover(serviceName);
 
             var key = _etcdClusterRoot
-                + _dhafInternalConfig.Etcd.SwitchoverPath;
+                + _dhafInternalConfig.Etcd.SwitchoverPath + service.Name;
 
             var entity = new EtcdManualSwitching
             {
@@ -189,21 +196,33 @@ namespace Dhaf.Node
             await _etcdClient.PutAsync(key, value);
         }
 
-        public async Task PurgeSwitchover()
+        public async Task PurgeSwitchover(string serviceName)
         {
+            var service = _services.FirstOrDefault(x => x.Name == serviceName);
+            if (service is null)
+            {
+                throw new RestApiException(1301, "No such service was found.");
+            }
+
             var key = _etcdClusterRoot
-                + _dhafInternalConfig.Etcd.SwitchoverPath;
+                + _dhafInternalConfig.Etcd.SwitchoverPath + service.Name;
 
             await _etcdClient.DeleteAsync(key);
         }
 
-        public async Task<IEnumerable<SwitchoverCandidate>> GetSwitchoverCandidates()
+        public async Task<IEnumerable<SwitchoverCandidate>> GetSwitchoverCandidates(string serviceName)
         {
-            var healthyNodes = _networkConfigurationStatuses
+            var service = _services.FirstOrDefault(x => x.Name == serviceName);
+            if (service is null)
+            {
+                throw new RestApiException(1301, "No such service was found.");
+            }
+
+            var healthyNodes = service.NetworkConfigurationStatuses
                 .Where(x => x.Healthy)
                 .Select(x => x.NcId);
 
-            var candidates = _clusterConfig.Service.NetworkConfigurations
+            var candidates = service.NetworkConfigurations
                 .Select((nc, i) => new SwitchoverCandidate { Name = nc.Id, Priority = i + 1 })
                 .Where(nc => healthyNodes.Contains(nc.Name));
 
@@ -230,7 +249,10 @@ namespace Dhaf.Node
 
             if (_role == DhafNodeRole.Leader)
             {
-                _logger.LogDebug($"NC is <{_currentNetworkConfigurationId}>.");
+                foreach (var service in _services)
+                {
+                    _logger.LogDebug($"In service <{service.Name}> NC is <{service.CurrentNetworkConfigurationId}>.");
+                }
             }
 
             if (_role == DhafNodeRole.Follower)
@@ -269,180 +291,202 @@ namespace Dhaf.Node
             }
 
             await FetchDhafNodeStatuses();
-            await NetworkConfigurationsHealthCheck();
+
+            var ncHealthCheckTasks = _services.Select(x => NetworkConfigurationsHealthCheck(x));
+            await Task.WhenAll(ncHealthCheckTasks);
 
             // The following task need to be performed NOT ONLY by the leader
             // in order for the CLI/REST API to work fully.
-            _previousNetworkConfigurationStatuses = _networkConfigurationStatuses;
-            _networkConfigurationStatuses = await InspectResultsOfNetworkConfigurationsHealthCheck();
+
+            var inspectNcTasks = _services.Select(async x =>
+            {
+                x.PreviousNetworkConfigurationStatuses = x.NetworkConfigurationStatuses;
+                x.NetworkConfigurationStatuses = await InspectResultsOfNetworkConfigurationsHealthCheck(x);
+            });
+
+            await Task.WhenAll(inspectNcTasks);
 
             if (_role == DhafNodeRole.Leader)
             {
-                var panicModeChanges = await UpdatePanicModeRelevance();
-                if (panicModeChanges.HasStatusChanged)
+                var serviceMaintenanceTasks = _services.Select(x => ServiceMaintenance(x));
+                await Task.WhenAll(serviceMaintenanceTasks);
+
+                await NotifyChangesInDhafNodesHealth();
+            }
+
+            var updateCurrNcTasks = _services.Select(async x =>
+            {
+                x.CurrentNetworkConfigurationId = await x.Switcher.GetCurrentNetworkConfigurationId();
+                _logger.LogDebug($"In service <{x.Name}> NC is <{x.CurrentNetworkConfigurationId}>.");
+            });
+
+            await Task.WhenAll(updateCurrNcTasks);
+
+            _logger.LogTrace("Tact is over.");
+        }
+
+        protected async Task ServiceMaintenance(DhafService service)
+        {
+            var panicModeChanges = await UpdatePanicModeRelevance(service);
+            if (panicModeChanges.HasStatusChanged)
+            {
+                if (service.PanicMode)
                 {
-                    if (_panicMode)
-                    {
-                        _logger.LogError("Panic mode is ON. All NCs are unhealthy. The service is DOWN and dhaf is physically unable to fix the situation on its own.");
+                    _logger.LogError("Panic mode is ON. All NCs are unhealthy. The service is DOWN and dhaf is physically unable to fix the situation on its own.");
 
-                        var eventData = await GetBaseEventData<NotifierEventData.ServiceHealthChanged>();
-                        await PushToNotifiers(new NotifierPushOptions
-                        {
-                            Level = NotifierLevel.Critical,
-                            Event = NotifierEvent.ServiceDown,
-                            EventData = eventData
-                        });
-                    }
-                    else
-                    {
-                        _logger.LogInformation("Panic mode is OFF.");
-
-                        var eventData = await GetBaseEventData<NotifierEventData.ServiceHealthChanged>();
-                        await PushToNotifiers(new NotifierPushOptions
-                        {
-                            Level = NotifierLevel.Info,
-                            Event = NotifierEvent.ServiceUp,
-                            EventData = eventData
-                        });
-                    }
-                }
-
-                _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
-
-                var autoSwitchRequirement = await IsAutoSwitchOfNetworkConfigurationRequired();
-                var switchoverRequirement = await IsSwitchoverOfNetworkConfigurationRequired();
-
-                // It can be FALSE even if there is a requirement in the storage.
-                // For example: the switchover requirement has already been completed.
-                var mustSwitchover = switchoverRequirement.IsRequired && !autoSwitchRequirement.Failover;
-
-                var switchoverRequirementInStorage = await GetSwitchoverRequirementOrDefault();
-
-                if (!mustSwitchover && switchoverRequirementInStorage != _switchoverLastRequirementInStorage)
-                {
-                    if (switchoverRequirementInStorage is null)
-                    {
-                        _logger.LogInformation("The switchover requirement are purged.");
-
-                        var eventData = await GetBaseEventData<NotifierEventData.SwitchoverPurged>();
-                        eventData.SwitchoverNc = _switchoverLastRequirementInStorage;
-
-                        await PushToNotifiers(new NotifierPushOptions
-                        {
-                            Level = NotifierLevel.Info,
-                            Event = NotifierEvent.SwitchoverPurged,
-                            EventData = eventData
-                        });
-                    }
-                    else
-                    {
-                        _logger.LogInformation($"There is switchover requirement to <{switchoverRequirementInStorage}>. No action is taken because the current configuration is already so.");
-                    }
-                }
-
-                _switchoverLastRequirementInStorage = switchoverRequirementInStorage;
-
-                var mustSwitching = autoSwitchRequirement.IsRequired
-                    && !autoSwitchRequirement.Failover && switchoverRequirementInStorage == null;
-
-                if (autoSwitchRequirement.Failover)
-                {
-                    _logger.LogWarning($"Current NC <{_currentNetworkConfigurationId}> is DOWN. A failover has been started...");
-
-                    if (switchoverRequirementInStorage != null)
-                    {
-                        _logger.LogWarning("Purge switchover requirement because failover is required...");
-                        await PurgeSwitchover();
-                    }
-
-                    await _switcher.Switch(new SwitcherSwitchOptions
-                    {
-                        NcId = autoSwitchRequirement.SwitchTo,
-                        Failover = autoSwitchRequirement.Failover
-                    });
-
-                    var eventData = await GetBaseEventData<NotifierEventData.CurrentNcChanged>();
-                    eventData.FromNc = _currentNetworkConfigurationId;
-                    eventData.ToNc = autoSwitchRequirement.SwitchTo;
-
+                    var eventData = await GetBaseEventData<NotifierEventData.ServiceHealthChanged>(service.Name);
                     await PushToNotifiers(new NotifierPushOptions
                     {
-                        Level = NotifierLevel.Warning,
-                        Event = NotifierEvent.Failover,
+                        Level = NotifierLevel.Critical,
+                        Event = NotifierEvent.ServiceDown,
                         EventData = eventData
                     });
                 }
-                if (mustSwitchover)
+                else
                 {
-                    var proposedHost = _networkConfigurationStatuses
-                        .FirstOrDefault(x => x.NcId == switchoverRequirement.SwitchTo);
+                    _logger.LogInformation("Panic mode is OFF.");
 
-                    if (proposedHost.Healthy)
+                    var eventData = await GetBaseEventData<NotifierEventData.ServiceHealthChanged>(service.Name);
+                    await PushToNotifiers(new NotifierPushOptions
                     {
-                        _logger.LogInformation("Switchover is requested...");
-                        await _switcher.Switch(new SwitcherSwitchOptions
-                        {
-                            NcId = switchoverRequirement.SwitchTo,
-                            Failover = switchoverRequirement.Failover
-                        });
-
-                        var eventData = await GetBaseEventData<NotifierEventData.CurrentNcChanged>();
-                        eventData.FromNc = _currentNetworkConfigurationId;
-                        eventData.ToNc = switchoverRequirement.SwitchTo;
-
-                        await PushToNotifiers(new NotifierPushOptions
-                        {
-                            Level = NotifierLevel.Info,
-                            Event = NotifierEvent.Switchover,
-                            EventData = eventData
-                        });
-                    }
-                    else
-                    {
-                        _logger.LogError($"Swithover is requested but it is not possible because the specified network configuration <{switchoverRequirement.SwitchTo}> is unhealthy. The requirement to switchover will be purged.");
-
-                        await PurgeSwitchover();
-                        mustSwitching = autoSwitchRequirement.IsRequired && !autoSwitchRequirement.Failover;
-                    }
-                }
-
-                if (mustSwitching)
-                {
-                    _logger.LogInformation($"Switching to a higher priority healthy NC <{autoSwitchRequirement.SwitchTo}>...");
-
-                    await _switcher.Switch(new SwitcherSwitchOptions
-                    {
-                        NcId = autoSwitchRequirement.SwitchTo,
-                        Failover = autoSwitchRequirement.Failover
+                        Level = NotifierLevel.Info,
+                        Event = NotifierEvent.ServiceUp,
+                        EventData = eventData
                     });
+                }
+            }
 
-                    var eventData = await GetBaseEventData<NotifierEventData.CurrentNcChanged>();
-                    eventData.FromNc = _currentNetworkConfigurationId;
-                    eventData.ToNc = autoSwitchRequirement.SwitchTo;
+            service.CurrentNetworkConfigurationId = await service.Switcher.GetCurrentNetworkConfigurationId();
+
+            var autoSwitchRequirement = await IsAutoSwitchOfNetworkConfigurationRequired(service);
+            var switchoverRequirement = await IsSwitchoverOfNetworkConfigurationRequired(service);
+
+            // It can be FALSE even if there is a requirement in the storage.
+            // For example: the switchover requirement has already been completed.
+            var mustSwitchover = switchoverRequirement.IsRequired && !autoSwitchRequirement.Failover;
+
+            var switchoverRequirementInStorage = await GetSwitchoverRequirementOrDefault(service);
+
+            if (!mustSwitchover && switchoverRequirementInStorage != service.SwitchoverLastRequirementInStorage)
+            {
+                if (switchoverRequirementInStorage is null)
+                {
+                    _logger.LogInformation("The switchover requirement are purged.");
+
+                    var eventData = await GetBaseEventData<NotifierEventData.SwitchoverPurged>(service.Name);
+                    eventData.SwitchoverNc = service.SwitchoverLastRequirementInStorage;
 
                     await PushToNotifiers(new NotifierPushOptions
                     {
                         Level = NotifierLevel.Info,
-                        Event = NotifierEvent.Switching,
+                        Event = NotifierEvent.SwitchoverPurged,
                         EventData = eventData
                     });
                 }
-
-                await NotifyChangesInNcHealth();
-                await NotifyChangesInDhafNodesHealth();
+                else
+                {
+                    _logger.LogInformation($"There is switchover requirement to <{switchoverRequirementInStorage}>. No action is taken because the current configuration is already so.");
+                }
             }
 
-            _currentNetworkConfigurationId = await _switcher.GetCurrentNetworkConfigurationId();
-            _logger.LogTrace("Tact is over.");
-            _logger.LogDebug($"NC is <{_currentNetworkConfigurationId}>.");
+            service.SwitchoverLastRequirementInStorage = switchoverRequirementInStorage;
+
+            var mustSwitching = autoSwitchRequirement.IsRequired
+                && !autoSwitchRequirement.Failover && switchoverRequirementInStorage == null;
+
+            if (autoSwitchRequirement.Failover)
+            {
+                _logger.LogWarning($"Current NC <{service.CurrentNetworkConfigurationId}> is DOWN. A failover has been started...");
+
+                if (switchoverRequirementInStorage != null)
+                {
+                    _logger.LogWarning("Purge switchover requirement because failover is required...");
+                    await PurgeSwitchover(service.Name);
+                }
+
+                await service.Switcher.Switch(new SwitcherSwitchOptions
+                {
+                    NcId = autoSwitchRequirement.SwitchTo,
+                    Failover = autoSwitchRequirement.Failover
+                });
+
+                var eventData = await GetBaseEventData<NotifierEventData.CurrentNcChanged>(service.Name);
+                eventData.FromNc = service.CurrentNetworkConfigurationId;
+                eventData.ToNc = autoSwitchRequirement.SwitchTo;
+
+                await PushToNotifiers(new NotifierPushOptions
+                {
+                    Level = NotifierLevel.Warning,
+                    Event = NotifierEvent.Failover,
+                    EventData = eventData
+                });
+            }
+            if (mustSwitchover)
+            {
+                var proposedHost = service.NetworkConfigurationStatuses
+                    .FirstOrDefault(x => x.NcId == switchoverRequirement.SwitchTo);
+
+                if (proposedHost.Healthy)
+                {
+                    _logger.LogInformation("Switchover is requested...");
+                    await service.Switcher.Switch(new SwitcherSwitchOptions
+                    {
+                        NcId = switchoverRequirement.SwitchTo,
+                        Failover = switchoverRequirement.Failover
+                    });
+
+                    var eventData = await GetBaseEventData<NotifierEventData.CurrentNcChanged>(service.Name);
+                    eventData.FromNc = service.CurrentNetworkConfigurationId;
+                    eventData.ToNc = switchoverRequirement.SwitchTo;
+
+                    await PushToNotifiers(new NotifierPushOptions
+                    {
+                        Level = NotifierLevel.Info,
+                        Event = NotifierEvent.Switchover,
+                        EventData = eventData
+                    });
+                }
+                else
+                {
+                    _logger.LogError($"Swithover is requested but it is not possible because the specified network configuration <{switchoverRequirement.SwitchTo}> is unhealthy. The requirement to switchover will be purged.");
+
+                    await PurgeSwitchover(service.Name);
+                    mustSwitching = autoSwitchRequirement.IsRequired && !autoSwitchRequirement.Failover;
+                }
+            }
+
+            if (mustSwitching)
+            {
+                _logger.LogInformation($"Switching to a higher priority healthy NC <{autoSwitchRequirement.SwitchTo}>...");
+
+                await service.Switcher.Switch(new SwitcherSwitchOptions
+                {
+                    NcId = autoSwitchRequirement.SwitchTo,
+                    Failover = autoSwitchRequirement.Failover
+                });
+
+                var eventData = await GetBaseEventData<NotifierEventData.CurrentNcChanged>(service.Name);
+                eventData.FromNc = service.CurrentNetworkConfigurationId;
+                eventData.ToNc = autoSwitchRequirement.SwitchTo;
+
+                await PushToNotifiers(new NotifierPushOptions
+                {
+                    Level = NotifierLevel.Info,
+                    Event = NotifierEvent.Switching,
+                    EventData = eventData
+                });
+            }
+
+            await NotifyChangesInNcHealth(service);
         }
 
-        protected async Task<T> GetBaseEventData<T>()
+        protected async Task<T> GetBaseEventData<T>(string serviceName = null)
             where T : NotifierEventData.Base, new()
         {
             var data = new T()
             {
                 DhafCluster = _clusterConfig.Dhaf.ClusterName,
+                Service = serviceName,
                 UtcTimestamp = DateTime.UtcNow
             };
 
@@ -626,27 +670,26 @@ namespace Dhaf.Node
         /// Checks the health of all network configurations (both active and others).
         /// The result (as a set of votes) is sent to DCS.
         /// </summary>
-        protected async Task NetworkConfigurationsHealthCheck()
+        protected async Task NetworkConfigurationsHealthCheck(DhafService service)
         {
-            var tasks = _clusterConfig.Service
+            var tasks = service
                 .NetworkConfigurations
-                .Select(x => NetworkConfigurationHealthCheck(x));
+                .Select(x => NetworkConfigurationHealthCheck(service, x));
 
             await Task.WhenAll(tasks);
 
-            _logger.LogTrace("The health of the service's hosts has been checked.");
+            _logger.LogTrace($"The health of all NC's in service <{service.Name}> has been checked.");
         }
 
-        protected async Task NetworkConfigurationHealthCheck(ClusterServiceNetworkConfig nc)
+        protected async Task NetworkConfigurationHealthCheck(DhafService service, ClusterServiceNetworkConfig nc)
         {
-            _logger.LogTrace($"Check NC <{nc.Id}>...");
+            _logger.LogTrace($"Check NC <{service.Name}/{nc.Id}>...");
 
-            var status = await _healthChecker.Check(new HealthCheckerCheckOptions { NcId = nc.Id });
+            var status = await service.HealthChecker.Check(new HealthCheckerCheckOptions { NcId = nc.Id });
 
             var key = _etcdClusterRoot
                 + _dhafInternalConfig.Etcd.HealthPath
-                + _clusterConfig.Dhaf.NodeName + "/"
-                + nc.Id;
+                + $"{service.Name}/{_clusterConfig.Dhaf.NodeName}/{nc.Id}";
 
             var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
             var serviceHealth = new EtcdServiceHealth
@@ -662,11 +705,11 @@ namespace Dhaf.Node
 
             if (status.Healthy)
             {
-                _logger.LogInformation($"NC <{nc.Id}> status: Healthy :)");
+                _logger.LogInformation($"NC <{service.Name}/{nc.Id}> status: Healthy :)");
             }
             else
             {
-                _logger.LogWarning($"NC <{nc.Id}> status: Unhealthy.");
+                _logger.LogWarning($"NC <{service.Name}/{nc.Id}> status: Unhealthy.");
             }
         }
 
@@ -676,7 +719,7 @@ namespace Dhaf.Node
         /// </summary>
         /// <returns>The status of each network configuration.</returns>
         protected async Task<IEnumerable<NetworkConfigurationStatus>>
-            InspectResultsOfNetworkConfigurationsHealthCheck()
+            InspectResultsOfNetworkConfigurationsHealthCheck(DhafService service)
         {
             var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
             var healthyNodes = _dhafNodeStatuses
@@ -689,7 +732,7 @@ namespace Dhaf.Node
             {
                 var keyPrefix = _etcdClusterRoot
                     + _dhafInternalConfig.Etcd.HealthPath
-                    + node + "/";
+                    + $"{service.Name}/{node}/";
 
                 var items = await _etcdClient.GetRangeValAsync(keyPrefix);
 
@@ -727,7 +770,7 @@ namespace Dhaf.Node
                         .Where(x => !x.Healthy && x.ReasonCode.HasValue)
                         .Select(x => x.ReasonCode)
                         .Distinct()
-                        .Select(async x => await _healthChecker.ResolveUnhealthinessReasonCode(x.Value));
+                        .Select(async x => await service.HealthChecker.ResolveUnhealthinessReasonCode(x.Value));
 
                     var reasonCodes = await Task.WhenAll(reasonCodeTasks);
                     ncStatus.Reasons = reasonCodes;
@@ -767,17 +810,17 @@ namespace Dhaf.Node
             _dhafNodeStatuses = nodeStatuses;
         }
 
-        protected async Task<UpdatePanicModeRelevanceResult> UpdatePanicModeRelevance()
+        protected async Task<UpdatePanicModeRelevanceResult> UpdatePanicModeRelevance(DhafService service)
         {
-            var oldValue = _panicMode;
-            var isAnyNcAvailable = _networkConfigurationStatuses
+            var oldValue = service.PanicMode;
+            var isAnyNcAvailable = service.NetworkConfigurationStatuses
                 .Any(x => x.Healthy);
 
-            _panicMode = !isAnyNcAvailable;
+            service.PanicMode = !isAnyNcAvailable;
 
             return new UpdatePanicModeRelevanceResult
             {
-                HasStatusChanged = _panicMode != oldValue
+                HasStatusChanged = service.PanicMode != oldValue
             };
         }
 
@@ -787,7 +830,7 @@ namespace Dhaf.Node
         /// which has become healthy again).
         /// </summary>
         protected async Task<DecisionOfNetworkConfigurationSwitching>
-            IsAutoSwitchOfNetworkConfigurationRequired()
+            IsAutoSwitchOfNetworkConfigurationRequired(DhafService service)
         {
             var negativeDecision = new DecisionOfNetworkConfigurationSwitching
             {
@@ -795,14 +838,14 @@ namespace Dhaf.Node
                 IsRequired = false
             };
 
-            var priorityNetConf = _networkConfigurationStatuses.FirstOrDefault(x => x.Healthy);
-            if (_panicMode || priorityNetConf == null)
+            var priorityNetConf = service.NetworkConfigurationStatuses.FirstOrDefault(x => x.Healthy);
+            if (service.PanicMode || priorityNetConf == null)
             {
                 return negativeDecision;
             }
 
-            var currentNetConf = _networkConfigurationStatuses
-                .FirstOrDefault(x => x.NcId == _currentNetworkConfigurationId);
+            var currentNetConf = service.NetworkConfigurationStatuses
+                .FirstOrDefault(x => x.NcId == service.CurrentNetworkConfigurationId);
 
             if (!currentNetConf.Healthy)
             {
@@ -828,10 +871,10 @@ namespace Dhaf.Node
         }
 
         protected async Task<DecisionOfNetworkConfigurationSwitching>
-            IsSwitchoverOfNetworkConfigurationRequired()
+            IsSwitchoverOfNetworkConfigurationRequired(DhafService service)
         {
             var key = _etcdClusterRoot
-                + _dhafInternalConfig.Etcd.SwitchoverPath;
+                + _dhafInternalConfig.Etcd.SwitchoverPath + service.Name;
 
             var rawValue = await _etcdClient.GetValAsync(key);
 
@@ -839,7 +882,7 @@ namespace Dhaf.Node
             {
                 var value = JsonSerializer.Deserialize<EtcdManualSwitching>(rawValue, DhafInternalConfig.JsonSerializerOptions);
 
-                if (_currentNetworkConfigurationId != value.NCId)
+                if (service.CurrentNetworkConfigurationId != value.NCId)
                 {
 
                     return new DecisionOfNetworkConfigurationSwitching
@@ -854,13 +897,14 @@ namespace Dhaf.Node
             return new DecisionOfNetworkConfigurationSwitching { Failover = false, IsRequired = false };
         }
 
-        protected async Task NotifyChangesInNcHealth()
+        protected async Task NotifyChangesInNcHealth(DhafService service)
         {
-            foreach (var curr in _networkConfigurationStatuses)
+            foreach (var curr in service.NetworkConfigurationStatuses)
             {
                 var pushRequired = false;
 
-                if (_previousNetworkConfigurationStatuses is null || !_previousNetworkConfigurationStatuses.Any())
+                if (service.PreviousNetworkConfigurationStatuses is null
+                    || !service.PreviousNetworkConfigurationStatuses.Any())
                 {
                     if (!curr.Healthy)
                     {
@@ -869,7 +913,7 @@ namespace Dhaf.Node
                 }
                 else
                 {
-                    var prev = _previousNetworkConfigurationStatuses.FirstOrDefault(x => x.NcId == curr.NcId);
+                    var prev = service.PreviousNetworkConfigurationStatuses.FirstOrDefault(x => x.NcId == curr.NcId);
                     if (prev is not null && curr.Healthy != prev.Healthy)
                     {
                         pushRequired = true;
@@ -878,7 +922,7 @@ namespace Dhaf.Node
 
                 if (pushRequired)
                 {
-                    var eventData = await GetBaseEventData<NotifierEventData.NcHealthChanged>();
+                    var eventData = await GetBaseEventData<NotifierEventData.NcHealthChanged>(service.Name);
                     eventData.NcName = curr.NcId;
 
                     if (!curr.Healthy)
@@ -888,6 +932,7 @@ namespace Dhaf.Node
 
                     await PushToNotifiers(new NotifierPushOptions
                     {
+                        ServiceName = service.Name,
                         Level = curr.Healthy ? NotifierLevel.Info : NotifierLevel.Warning,
                         Event = curr.Healthy ? NotifierEvent.NcUp : NotifierEvent.NcDown,
                         EventData = eventData
@@ -933,10 +978,10 @@ namespace Dhaf.Node
             }
         }
 
-        protected async Task<string> GetSwitchoverRequirementOrDefault()
+        protected async Task<string> GetSwitchoverRequirementOrDefault(DhafService service)
         {
             var key = _etcdClusterRoot
-                + _dhafInternalConfig.Etcd.SwitchoverPath;
+                + _dhafInternalConfig.Etcd.SwitchoverPath + service.Name;
 
             var rawValue = await _etcdClient.GetValAsync(key);
 
@@ -952,11 +997,17 @@ namespace Dhaf.Node
 
         protected async Task SendDhafNodeRoleChangedEvent(DhafNodeRole role)
         {
-            await _switcher.DhafNodeRoleChangedEventHandler(role);
-            await _healthChecker.DhafNodeRoleChangedEventHandler(role);
+            var tasks = new List<Task>();
 
-            var notifierHandlers = _notifiers.Select(x => x.DhafNodeRoleChangedEventHandler(role));
-            await Task.WhenAll(notifierHandlers);
+            foreach (var service in _services)
+            {
+                tasks.Add(service.Switcher.DhafNodeRoleChangedEventHandler(role));
+                tasks.Add(service.HealthChecker.DhafNodeRoleChangedEventHandler(role));
+            }
+
+            tasks.AddRange(_notifiers.Select(x => x.DhafNodeRoleChangedEventHandler(role)));
+
+            await Task.WhenAll(tasks);
         }
 
         protected async Task PushToNotifiers(NotifierPushOptions opt)

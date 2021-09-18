@@ -1,8 +1,6 @@
 ﻿using Dhaf.Node;
 using RestSharp;
 using Spectre.Console;
-using System;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Dhaf.CLI

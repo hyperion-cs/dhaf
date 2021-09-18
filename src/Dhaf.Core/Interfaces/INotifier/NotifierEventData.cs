@@ -9,6 +9,7 @@ namespace Dhaf.NotifierEventData
         public DateTime UtcTimestamp { get; set; }
 
         public string DhafCluster { get; set; }
+        public string Service { get; set; }
     }
 
     public class NcHealthChanged : Base

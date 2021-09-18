@@ -32,31 +32,38 @@ namespace Dhaf.Node
         }
 
         [Route(HttpVerbs.Get, "/switchover")]
-        public async Task<RestApiResponse> Switchover([QueryField(true)] string ncId)
+        public async Task<RestApiResponse> Switchover([QueryField(true)] string serviceName, [QueryField(true)] string ncId)
         {
-            await _dhafNode.Switchover(ncId);
+            await _dhafNode.Switchover(serviceName, ncId);
             return new RestApiResponse { Success = true };
         }
 
         [Route(HttpVerbs.Get, "/switchover/purge")]
-        public async Task<RestApiResponse> SwitchoverPurge()
+        public async Task<RestApiResponse> SwitchoverPurge([QueryField(true)] string serviceName)
         {
-            await _dhafNode.PurgeSwitchover();
+            await _dhafNode.PurgeSwitchover(serviceName);
             return new RestApiResponse { Success = true };
         }
 
         [Route(HttpVerbs.Get, "/switchover/candidates")]
-        public async Task<RestApiResponse> SwitchoverСandidates()
+        public async Task<RestApiResponse> SwitchoverСandidates([QueryField(true)] string serviceName)
         {
-            var candidates = await _dhafNode.GetSwitchoverCandidates();
+            var candidates = await _dhafNode.GetSwitchoverCandidates(serviceName);
             return new RestApiResponse<IEnumerable<SwitchoverCandidate>> { Success = true, Data = candidates };
         }
 
         [Route(HttpVerbs.Get, "/service/status")]
-        public async Task<RestApiResponse> ServiceStatus()
+        public async Task<RestApiResponse> ServiceStatus([QueryField(true)] string serviceName)
         {
-            var status = await _dhafNode.GetServiceStatus();
+            var status = await _dhafNode.GetServiceStatus(serviceName);
             return new RestApiResponse<ServiceStatus> { Success = true, Data = status };
+        }
+
+        [Route(HttpVerbs.Get, "/services/status")]
+        public async Task<RestApiResponse> ServicesStatus()
+        {
+            var statuses = await _dhafNode.GetServicesStatus();
+            return new RestApiResponse<IEnumerable<ServiceStatus>> { Success = true, Data = statuses };
         }
 
         [Route(HttpVerbs.Get, "/dhaf/status")]

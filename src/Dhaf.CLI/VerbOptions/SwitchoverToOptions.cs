@@ -10,6 +10,9 @@ namespace Dhaf.CLI
         [Option('c', "config", Required = true, HelpText = "Configuration file.")]
         public string Config { get; set; }
 
+        [Option('s', "service", Required = true, HelpText = "Service name.")]
+        public string ServiceName { get; set; }
+
         [Value(0, Required = true, HelpText = "Network configuration name.")]
         public string NcName { get; set; }
 
@@ -18,8 +21,8 @@ namespace Dhaf.CLI
         {
             get
             {
-                yield return new Example("Switchover to the specified network configuration <nc-1> using configuration file <config_file>",
-                    new SwitchoverToOptions { NcName = "nc-1", Config = "<config_file>" });
+                yield return new Example("Switchover to the specified network configuration <nc-1> in service <s> using configuration file <config_file>",
+                    new SwitchoverToOptions { NcName = "nc-1", Config = "<config_file>", ServiceName = "<s>" });
             }
         }
     }

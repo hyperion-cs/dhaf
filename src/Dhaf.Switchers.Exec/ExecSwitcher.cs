@@ -21,7 +21,7 @@ namespace Dhaf.Switchers.Exec
         public Type ConfigType => typeof(Config);
         public Type InternalConfigType => typeof(InternalConfig);
 
-        public string Sign => $"[{ExtensionName} sw]";
+        public string Sign => $"[{_serviceConfig.Name}/{ExtensionName} sw]";
 
         public async Task<string> GetCurrentNetworkConfigurationId()
         {
@@ -30,12 +30,13 @@ namespace Dhaf.Switchers.Exec
 
         public async Task Init(SwitcherInitOptions options)
         {
+            _serviceConfig = options.ClusterServiceConfig;
             _logger = options.Logger;
+
             _logger.LogTrace($"{Sign} Init process...");
 
             _config = (Config)options.Config;
             _internalConfig = (InternalConfig)options.InternalConfig;
-            _serviceConfig = options.ClusterServiceConfig;
 
             var execResults = Shell.Exec(_config.Init);
 

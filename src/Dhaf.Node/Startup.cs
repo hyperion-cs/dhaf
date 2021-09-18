@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -43,43 +44,65 @@ namespace Dhaf.Node
             var clusterConfigParser = new ClusterConfigParser(_argsOptions.ConfigPath, extensionsScope);
             var parsedClusterConfig = await clusterConfigParser.Parse();
 
-            dhafNodeLogger.LogInformation($"I am <{parsedClusterConfig.Dhaf.NodeName}> in the <{parsedClusterConfig.Dhaf.ClusterName}> cluster.");
-            dhafNodeLogger.LogDebug($"Switcher provider is <{parsedClusterConfig.Switcher.ExtensionName}>.");
-            dhafNodeLogger.LogDebug($"Health checker provider is <{parsedClusterConfig.HealthCheck.ExtensionName}>.");
-
-            var healthChecker = extensionsScope.HealthCheckers
-                .First(x => x.Instance.ExtensionName == parsedClusterConfig.HealthCheck.ExtensionName);
-
-            var switcher = extensionsScope.Switchers
-                .First(x => x.Instance.ExtensionName == parsedClusterConfig.Switcher.ExtensionName);
-
-            var swInternalConfig = await clusterConfigParser.ParseExtensionInternal<ISwitcherInternalConfig>
-                (switcher.ExtensionPath, switcher.Instance.InternalConfigType);
-
-            var hcInternalConfig = await clusterConfigParser.ParseExtensionInternal<IHealthCheckerInternalConfig>
-                    (healthChecker.ExtensionPath, healthChecker.Instance.InternalConfigType);
-
             var etcdClient = new EtcdClient(parsedClusterConfig.Etcd.Hosts);
 
-            var hcInitOptions = new HealthCheckerInitOptions
-            {
-                Logger = hcLogger,
-                Config = parsedClusterConfig.HealthCheck,
-                ClusterServiceConfig = parsedClusterConfig.Service,
-                InternalConfig = hcInternalConfig,
-                Storage = new ExtensionStorageProvider(etcdClient, parsedClusterConfig, dhafInternalConfig,
-                    dhafInternalConfig.Etcd.ExtensionStorageHcPrefix + parsedClusterConfig.HealthCheck.ExtensionName)
-            };
 
-            var swInitOptions = new SwitcherInitOptions
+            dhafNodeLogger.LogInformation($"I am <{parsedClusterConfig.Dhaf.NodeName}> in the <{parsedClusterConfig.Dhaf.ClusterName}> cluster.");
+
+            var services = new ConcurrentBag<DhafService>();
+
+            var extInitorTasks = parsedClusterConfig.Services.Select(async servConf =>
             {
-                Logger = swLogger,
-                Config = parsedClusterConfig.Switcher,
-                ClusterServiceConfig = parsedClusterConfig.Service,
-                InternalConfig = swInternalConfig,
-                Storage = new ExtensionStorageProvider(etcdClient, parsedClusterConfig, dhafInternalConfig,
-                    dhafInternalConfig.Etcd.ExtensionStorageSwPrefix + parsedClusterConfig.Switcher.ExtensionName)
-            };
+                dhafNodeLogger.LogDebug($"Switcher provider in <{servConf.Name}> is <{servConf.Switcher.ExtensionName}>.");
+
+                dhafNodeLogger
+                    .LogDebug($"Health checker provider in <{servConf.Name}> is <{servConf.HealthChecker.ExtensionName}>.");
+
+                var healthCheckerTemplate = extensionsScope.HealthCheckers
+                    .First(x => x.Instance.ExtensionName == servConf.HealthChecker.ExtensionName);
+
+                var switcherTemplate = extensionsScope.Switchers
+                    .First(x => x.Instance.ExtensionName == servConf.Switcher.ExtensionName);
+
+                var healthChecker = ExtensionsScopeFactory.CreateSuchAs(healthCheckerTemplate.Instance);
+                var switcher = ExtensionsScopeFactory.CreateSuchAs(switcherTemplate.Instance);
+
+                var hcInternalConfig = await clusterConfigParser.ParseExtensionInternal<IHealthCheckerInternalConfig>
+                        (healthCheckerTemplate.ExtensionPath, healthChecker.InternalConfigType);
+
+                var swInternalConfig = await clusterConfigParser.ParseExtensionInternal<ISwitcherInternalConfig>
+                    (switcherTemplate.ExtensionPath, switcher.InternalConfigType);
+
+                var hcInitOptions = new HealthCheckerInitOptions
+                {
+                    Logger = hcLogger,
+                    Config = servConf.HealthChecker,
+                    ClusterServiceConfig = servConf,
+                    InternalConfig = hcInternalConfig,
+                    Storage = new ExtensionStorageProvider(etcdClient, parsedClusterConfig, dhafInternalConfig,
+                        dhafInternalConfig.Etcd.ExtensionStorageHcPrefix + servConf.HealthChecker.ExtensionName)
+                };
+
+                var swInitOptions = new SwitcherInitOptions
+                {
+                    Logger = swLogger,
+                    Config = servConf.Switcher,
+                    ClusterServiceConfig = servConf,
+                    InternalConfig = swInternalConfig,
+                    Storage = new ExtensionStorageProvider(etcdClient, parsedClusterConfig, dhafInternalConfig,
+                        dhafInternalConfig.Etcd.ExtensionStorageSwPrefix + servConf.Switcher.ExtensionName)
+                };
+
+                await healthChecker.Init(hcInitOptions);
+                await switcher.Init(swInitOptions);
+
+                services.Add(new DhafService(servConf.Name,
+                    servConf.Domain,
+                    servConf.NetworkConfigurations,
+                    switcher, healthChecker));
+            });
+
+            await Task.WhenAll(extInitorTasks);
 
             var notifierTemplates = extensionsScope.Notifiers;
             var notifiers = new List<INotifier>();
@@ -108,12 +131,8 @@ namespace Dhaf.Node
                 await instance.Init(ntfInitOptions);
             }
 
-            await healthChecker.Instance.Init(hcInitOptions);
-            await switcher.Instance.Init(swInitOptions);
-
-
             IDhafNode dhafNode = new DhafNode(parsedClusterConfig, dhafInternalConfig,
-                switcher.Instance, healthChecker.Instance, notifiers, etcdClient, dhafNodeLogger);
+                services, notifiers, etcdClient, dhafNodeLogger);
 
             dhafNodeLogger.LogTrace("[rest api] Init process...");
 

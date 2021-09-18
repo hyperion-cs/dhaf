@@ -13,7 +13,7 @@ namespace Dhaf.CLI
         public static async Task<int> ExecuteSwitchoverCandidatesAndReturnExitCode(SwitchoverCandidatesOptions opt)
         {
             await PrepareRestClient(opt);
-            var request = new RestRequest($"switchover/candidates");
+            var request = new RestRequest($"switchover/candidates?serviceName={opt.ServiceName}");
 
             var response = await _restClient.GetAsync<RestApiResponse<IEnumerable<SwitchoverCandidate>>>(request);
             if (!response.Success)

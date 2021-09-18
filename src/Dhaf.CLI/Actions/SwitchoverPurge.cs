@@ -11,7 +11,7 @@ namespace Dhaf.CLI
         public static async Task<int> ExecuteSwitchoverPurgeAndReturnExitCode(SwitchoverPurgeOptions opt)
         {
             await PrepareRestClient(opt);
-            var request = new RestRequest($"switchover/purge");
+            var request = new RestRequest($"switchover/purge?serviceName={opt.ServiceName}");
 
             var response = await _restClient.GetAsync<RestApiResponse>(request);
             if (!response.Success)

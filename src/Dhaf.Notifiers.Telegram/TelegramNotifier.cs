@@ -114,6 +114,7 @@ namespace Dhaf.Notifiers.Telegram
 
             var dhafCluster = MdEscape(options.EventData.DhafCluster);
             var timestamp = MdEscape(options.EventData.UtcTimestamp.ToString("F", CultureInfo.InvariantCulture));
+            var service = MdEscape(options.EventData.Service ?? "none");
 
             if (options.Event == NotifierEvent.ServiceUp
                  || options.Event == NotifierEvent.ServiceDown)
@@ -121,7 +122,7 @@ namespace Dhaf.Notifiers.Telegram
                 var verb = options.Event == NotifierEvent.ServiceUp ? "UP" : "DOWN";
                 var longVerb = verb == "UP" ? $"healthy \\(*UP*\\)" : $"unhealthy \\(*DOWN*\\)";
 
-                message = $"The service in dhaf cluster "
+                message = $"The service *{service}* in dhaf cluster "
                  + $"*{dhafCluster}* is {longVerb}\\."
                  + $"\n\nTimestamp \\(UTC\\): *{timestamp}*";
             }
@@ -151,7 +152,7 @@ namespace Dhaf.Notifiers.Telegram
                 var toNc = MdEscape(eventData.ToNc);
 
                 message = $"There was a network configuration {verb} from *{fromNc}* "
-                 + $"to *{toNc}* in dhaf cluster *{dhafCluster}*\\."
+                 + $"to *{toNc}* in the service *{service}* of dhaf cluster *{dhafCluster}*\\."
                  + $"\n\nTimestamp \\(UTC\\): *{timestamp}*";
             }
 
@@ -160,7 +161,7 @@ namespace Dhaf.Notifiers.Telegram
                 var eventData = (NotifierEventData.NcHealthChanged)options.EventData;
                 var ncName = MdEscape(eventData.NcName);
 
-                message = $"The network configuration *{ncName}* in dhaf cluster "
+                message = $"The network configuration *{ncName}* in the service *{service}* of dhaf cluster "
                                  + $"*{dhafCluster}* is healthy \\(*UP*\\)\\."
                                  + $"\n\nTimestamp \\(UTC\\): *{timestamp}*";
             }
@@ -171,7 +172,7 @@ namespace Dhaf.Notifiers.Telegram
                 var ncName = MdEscape(eventData.NcName);
                 var reasons = MdEscape(string.Join("; ", eventData.Reasons));
 
-                message = $"The network configuration *{ncName}* in dhaf cluster "
+                message = $"The network configuration *{ncName}* in the service *{service}* of dhaf cluster "
                                  + $"*{dhafCluster}* is unhealthy \\(*DOWN*\\)\\."
                                  + $"\n\nTimestamp \\(UTC\\): *{timestamp}*"
                                  + $"\n*Reason\\(s\\)*: {reasons}";
@@ -183,7 +184,7 @@ namespace Dhaf.Notifiers.Telegram
                 var switchoverNc = MdEscape(eventData.SwitchoverNc);
 
                 message = $"The SWITCHOVER requirement to *{switchoverNc}* has been purged "
-                        + $"in dhaf cluster *{dhafCluster}*\\."
+                        + $"in the service *{service}* of dhaf cluster *{dhafCluster}*\\."
                         + $"\n\nTimestamp \\(UTC\\): *{timestamp}*";
             }
 
@@ -203,7 +204,7 @@ namespace Dhaf.Notifiers.Telegram
                 var eventDataJsonEscaped = MdEscape(eventDataJson);
                 var eventDataType = MdEscape(options.EventData.GetType().ToString());
 
-                message = $"An unexpected event occurred in dhaf cluster *{dhafCluster}*\\."
+                message = $"An unexpected event occurred in the service *{service}* of dhaf cluster *{dhafCluster}*\\."
                             + $"\n\nTimestamp \\(UTC\\): *{timestamp}*"
                             + $"\nEvent: *{options.Event}*"
                             + $"\nEventData\\.Type: *{eventDataType}*"

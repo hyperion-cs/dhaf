@@ -4,6 +4,7 @@ namespace Dhaf.Node
 {
     public class ServiceStatus
     {
+        public string Name { get; set; }
         public string Domain { get; set; }
         public string CurrentNcName { get; set; }
         public IEnumerable<ServiceNcStatus> NetworkConfigurations { get; set; }

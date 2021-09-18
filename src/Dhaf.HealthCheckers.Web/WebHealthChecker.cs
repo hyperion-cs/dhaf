@@ -19,19 +19,20 @@ namespace Dhaf.HealthCheckers.Web
         private ClusterServiceConfig _serviceConfig;
 
         public string ExtensionName => "web";
-        public string Sign => $"[{ExtensionName} hc]";
+        public string Sign => $"[{_serviceConfig.Name}/{ExtensionName} hc]";
 
         public Type ConfigType => typeof(Config);
         public Type InternalConfigType => typeof(InternalConfig);
 
         public async Task Init(HealthCheckerInitOptions options)
         {
+            _serviceConfig = options.ClusterServiceConfig;
             _logger = options.Logger;
+
             _logger.LogTrace($"{Sign} Init process...");
 
             _config = (Config)options.Config;
             _internalConfig = (InternalConfig)options.InternalConfig;
-            _serviceConfig = options.ClusterServiceConfig;
 
             _client = new RestClient()
             {
