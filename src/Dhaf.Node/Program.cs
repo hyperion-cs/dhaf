@@ -41,7 +41,11 @@ namespace Dhaf.Node
             }
             catch (ConfigParsingException ex)
             {
-                logger.Fatal($"Config parser error {ex.Code}: {ex.Message}");
+                logger.Fatal($"Config parsing error {ex.Code}: {ex.Message}");
+            }
+            catch (YamlDotNet.Core.YamlException ex)
+            {
+                logger.Fatal($"Config YAML deserialize error:\n{ex.Message}");
             }
             catch (Exception ex)
             {
