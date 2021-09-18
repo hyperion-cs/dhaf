@@ -142,6 +142,13 @@ namespace Dhaf.HealthCheckers.Web
                     throw new ConfigParsingException(1802, $"{Sign} Incorrect URI scheme is specified (only http/https allowed).");
                 }
             }
+
+            if (_config.Timeout is not null
+                && (_config.Timeout < _internalConfig.MinTimeout || _config.Timeout > _internalConfig.MaxTimeout))
+            {
+                throw new ConfigParsingException(1803, $"{Sign} Timeout must be in the " +
+                    $"range {_internalConfig.MinTimeout}-{_internalConfig.MaxTimeout} seconds.");
+            }
         }
 
         protected string PrepareSchema(string schema)

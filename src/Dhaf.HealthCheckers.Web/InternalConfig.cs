@@ -23,5 +23,8 @@ namespace Dhaf.HealthCheckers.Web
         public string ExpectedCodesWildcard { get; set; }
 
         public string DefExpectedResponseBody { get; set; }
+
+        public int MinTimeout { get; set; }
+        public int MaxTimeout { get; set; }
     }
 }

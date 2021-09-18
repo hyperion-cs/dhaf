@@ -15,6 +15,9 @@
     "defExpectedCodes": "200",
     "expectedCodesSeparator": ",",
     "expectedCodesWildcard": "X",
-    "defExpectedResponseBody": ""
+    "defExpectedResponseBody": "",
+
+    "minTimeout": 1,
+    "maxTimeout": 86400
   }
 }
