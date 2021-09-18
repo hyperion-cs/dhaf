@@ -176,7 +176,34 @@ Exec health check provider (`exec`):
 | `init` | string | Path to the executable file for provider initialization. | Required |
 | `check` | string | Path to the executable file to health check. The command line arguments for health check will be passed: [network configuration name, network configuration ip]. Should return exit code 0 if the network configuration is considered healthy. | Required |
     
-
+### Configurations for notifier providers
+⚠️ Pay attention! There can be several of them in one cluster.
+    
+E-Mail notifier provider (`email`):
+|Parameter name|Type|Description|Default|
+| - | :-: | - | :-: |
+| name | string | Notifier instance name. | `email-anon` |
+| from | string | The email address of the sender of the notifications. | Required |
+| to | string | The email address of the recipient of the notifications. | Required |
+| smtp | object | SMTP server configuration. | — |
+| smtp.server | string | SMTP server host. | Required |
+| smtp.port | int | SMTP server port. | Required |
+| smtp.security | string | Connection security. Possible values: `ssl`. | — |
+| smtp.username | string | SMTP server credentials -> username. | — |
+| smtp.password | string | SMTP server credentials -> password. | — |
+    
+Telegram messenger notifier provider (`tg`):
+|Parameter name|Type|Description|Default|
+| - | :-: | - | :-: |
+| name | string | Notifier instance name. | `tg-anon` |
+| token | string | API token from Telegram bot. | Required |
+| join-code | string | The security code that is required to start a notification bot in private messages or a group. | Required |
+  
+Telegram bot prerequisites:
+- All you have to do is create a bot via @BotFather (more details [here](https://core.telegram.org/bots#3-how-do-i-create-a-bot)) and write the API key in the config. Everything else is taken care of by the `tg` provider (in other words, the `tg` provider acts as a server for the bot). It does NOT require incoming connections because it uses [long polling](https://en.wikipedia.org/wiki/Push_technology#Long_polling);
+- It is worth turning on [privacy mode](https://core.telegram.org/bots#privacy-mode) in the settings of the bot.
+    
+    
 # Terminology
 - Failover — emergency switching of the network configuration in automatic mode;
 - Switchover — knowingly manually switching network configurations (for maintenance, testing, etc.);
