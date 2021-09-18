@@ -1,0 +1,59 @@
+dhaf:
+  cluster-name: test-cr
+  node-name: node-1
+  web-api:
+    host: localhost
+    port: 8128
+
+etcd:
+  hosts: http://11.22.33.44:2379
+
+services:
+  - name: serv1
+    domain: site.com
+    network-conf:
+      - name: nc1
+        ip: 100.1.1.1
+      - name: nc2
+        ip: 100.1.1.2
+      - name: nc3
+        ip: 100.1.1.3
+    switcher:
+      type: cloudflare
+      api-token: aaa
+      zone: site.com
+    health-checker:
+      type: web
+      schema: http
+
+  - name: serv2
+    domain: foo.site.com
+    network-conf:
+      - name: nc1
+        ip: 120.1.1.1
+      - name: nc2
+        ip: 120.1.1.2
+    switcher:
+      type: cloudflare
+      api-token: bbb
+      zone: site.com
+    health-checker:
+      type: web
+      schema: http
+
+notifiers:
+  - type: email
+    name: ntf-mail-1
+    from: dhaf@site.com
+    to: admin@site.com
+    smtp:
+      server: smtp.site.com
+      port: 465
+      security: ssl
+      username: dhaf@site.com
+      password: YzqNBJxXzave589Z
+
+  - type: tg
+    token: tg-token-aaa
+    join-code: w2r6KPSgf2SnD6yM
+    name: ntf-tg-1
