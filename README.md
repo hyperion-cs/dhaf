@@ -203,6 +203,9 @@ Telegram bot prerequisites:
 - All you have to do is create a bot via @BotFather (more details [here](https://core.telegram.org/bots#3-how-do-i-create-a-bot)) and write the API key in the config. Everything else is taken care of by the `tg` provider (in other words, the `tg` provider acts as a server for the bot). It does NOT require incoming connections because it uses [long polling](https://en.wikipedia.org/wiki/Push_technology#Long_polling);
 - It is worth turning on [privacy mode](https://core.telegram.org/bots#privacy-mode) in the settings of the bot.
     
+# Dhaf as a service, automatically started at OS startup
+This is done e.g. via [Systemd](https://en.wikipedia.org/wiki/Systemd) on Linux. For Windows you can use [Windows service](https://en.wikipedia.org/wiki/Windows_service).
+The templates can be found in the `templates` folder of the current repository.
     
 # Terminology
 - Failover — emergency switching of the network configuration in automatic mode;
