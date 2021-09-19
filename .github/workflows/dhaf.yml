@@ -22,4 +22,4 @@ jobs:
     - name: Build
       run: dotnet build src/Dhaf.sln --configuration Release --no-restore
     - name: Test
-      run: dotnet test src/Dhaf.sln --no-build --verbosity normal
+      run: dotnet test src/Dhaf.sln --no-build --verbosity normal --configuration Release
