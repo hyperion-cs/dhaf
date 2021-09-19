@@ -42,17 +42,6 @@ services:
       schema: http
 
 notifiers:
-  - type: email
-    name: ntf-mail-1
-    from: dhaf@site.com
-    to: admin@site.com
-    smtp:
-      server: smtp.site.com
-      port: 465
-      security: ssl
-      username: dhaf@site.com
-      password: YzqNBJxXzave589Z
-
   - type: tg
     token: tg-token-aaa
     join-code: w2r6KPSgf2SnD6yM

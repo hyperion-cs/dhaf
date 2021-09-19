@@ -25,11 +25,6 @@ namespace Dhaf.Core.Tests
             tgNotifier.Setup(x => x.ConfigType).Returns(typeof(NotifierConfigMock));
             tgNotifier.Setup(x => x.InternalConfigType).Returns(typeof(NotifierInternalConfigMock));
 
-            var mailNotifier = new Mock<INotifier>();
-            mailNotifier.Setup(x => x.ExtensionName).Returns("email");
-            mailNotifier.Setup(x => x.ConfigType).Returns(typeof(NotifierConfigMock));
-            mailNotifier.Setup(x => x.InternalConfigType).Returns(typeof(NotifierInternalConfigMock));
-
             var extensionsScope = new ExtensionsScope
             {
                 Switchers = new List<DhafExtension<ISwitcher>>()
@@ -51,10 +46,6 @@ namespace Dhaf.Core.Tests
                     new DhafExtension<INotifier>
                     {
                         ExtensionPath = "ntf/tg", Instance = tgNotifier.Object
-                    },
-                    new DhafExtension<INotifier>
-                    {
-                        ExtensionPath = "ntf/email", Instance = mailNotifier.Object
                     }
                 }
             };
@@ -105,9 +96,9 @@ namespace Dhaf.Core.Tests
             Assert.Equal(2, serv2.NetworkConfigurations.Count);
 
             Assert.NotNull(parsedConfig.Notifiers);
-            Assert.Equal(2, parsedConfig.Notifiers.Count);
+            Assert.Single(parsedConfig.Notifiers);
 
-            var ntf1 = parsedConfig.Notifiers[1];
+            var ntf1 = parsedConfig.Notifiers[0];
             Assert.NotNull(ntf1);
             Assert.Equal("a", ntf1.ExtensionName);
             Assert.Equal("a", ntf1.Name);
