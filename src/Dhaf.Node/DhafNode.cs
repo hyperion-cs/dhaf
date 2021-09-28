@@ -739,6 +739,14 @@ namespace Dhaf.Node
                 foreach (var item in items)
                 {
                     var hostId = Path.GetFileName(item.Key);
+
+                    if (service.NetworkConfigurations.FirstOrDefault(x => x.Id == hostId) is null)
+                    {
+                        // There seems to be some trash left over from old network configurations.
+                        await _etcdClient.DeleteAsync(item.Key);
+                        continue;
+                    }
+
                     var value = JsonSerializer.Deserialize<EtcdServiceHealth>(item.Value, DhafInternalConfig.JsonSerializerOptions);
 
                     if (!hostsHealthOpinions.ContainsKey(hostId))
