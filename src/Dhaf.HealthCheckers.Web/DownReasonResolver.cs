@@ -4,7 +4,12 @@ namespace Dhaf.HealthCheckers.Web
 {
     public enum DownReason
     {
-        Timeout = 0, UnexpectedHttpCode = 1, UnexpectedResponseBody = 2
+        Timeout = 0,
+        UnexpectedHttpCode = 1,
+        UnexpectedResponseBody = 2,
+        NotCompleted = 3,
+        SslPolicyErrors = 4,
+        NetworkOrFrameworkException = 5
     }
 
     public static class DownReasonResolver
@@ -25,7 +30,10 @@ namespace Dhaf.HealthCheckers.Web
         {
             { DownReason.Timeout, "HTTP timeout occurred" },
             { DownReason.UnexpectedHttpCode, "Unexpected http code" },
-            { DownReason.UnexpectedResponseBody, "Unexpected response body" }
+            { DownReason.UnexpectedResponseBody, "Unexpected response body" },
+            { DownReason.NotCompleted, "Not completed" },
+            { DownReason.SslPolicyErrors, "Ssl policy errors" },
+            { DownReason.NetworkOrFrameworkException, "Network or framework exception" }
         };
     }
 }

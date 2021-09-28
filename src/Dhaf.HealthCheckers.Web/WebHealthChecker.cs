@@ -2,8 +2,10 @@
 using Microsoft.Extensions.Logging;
 using RestSharp;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Security;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -80,9 +82,22 @@ namespace Dhaf.HealthCheckers.Web
                 var method = Enum.Parse<Method>(_config.Method ?? _internalConfig.DefMethod);
                 var response = await _client.ExecuteAsync(request, method);
 
-                if (response.ResponseStatus != ResponseStatus.Completed)
+                if (response.ErrorException is not null)
+                {
+                    downReason = GetSslPolicyErrors(response.ErrorException).Any()
+                        ? DownReason.SslPolicyErrors : DownReason.NetworkOrFrameworkException;
+                    continue;
+                }
+
+                if (response.ResponseStatus == ResponseStatus.TimedOut)
                 {
                     downReason = DownReason.Timeout;
+                    continue;
+                }
+
+                if (response.ResponseStatus != ResponseStatus.Completed)
+                {
+                    downReason = DownReason.NotCompleted;
                     continue;
                 }
 
@@ -109,6 +124,25 @@ namespace Dhaf.HealthCheckers.Web
         public async Task<string> ResolveUnhealthinessReasonCode(int code)
         {
             return DownReasonResolver.Resolve(code);
+        }
+
+        protected IEnumerable<string> GetSslPolicyErrors(Exception sourceExp)
+        {
+            var e = sourceExp;
+            while (e.InnerException is not null)
+            {
+                e = e.InnerException;
+            }
+
+            if (e is System.Security.Authentication.AuthenticationException)
+            {
+                var speNames = Enum.GetNames<SslPolicyErrors>();
+                var speErrors = speNames.Where(x => e.Message.Contains(x));
+
+                return speErrors;
+            }
+
+            return new List<string>();
         }
 
         protected bool CheckHttpCode(HttpStatusCode code, string codeMasks)
