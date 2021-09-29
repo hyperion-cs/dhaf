@@ -39,7 +39,8 @@ The following is recommended for stable operation of this solution:
 1. Two servers of your entry point (primary, secondary) in independent data centers. This can be both load balancers (such as haproxy) and directly your services;
 2. Three dhaf servers in independent datacenters. These can be the **cheapest** virtual servers (including cloud servers), because the load on them is minimal. The following should be installed on them:
     - **dhaf** (current project);
-    - **[etcd](https://github.com/etcd-io/etcd)** >= v3.5 as DCS (Distributed Configuration Store).
+    - **[etcd](https://github.com/etcd-io/etcd)** >= v3.5 as DCS (Distributed Configuration Store);
+    -  .NET Runtime >= 5.0 (download [here](https://dotnet.microsoft.com/download/dotnet/5.0/runtime)).
 
 # Quick Start
 Below is a simple example of how to make dhaf work (with Cloudflare provider as switcher).
