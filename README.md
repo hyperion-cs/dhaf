@@ -169,6 +169,8 @@ Web health check provider (`web`):
 | `retries` | int | The number of retries to attempt in case of a timeout before marking the origin as unhealthy. Retries are attempted immediately. | `2` |
 | `expected-codes` | string | The expected HTTP response code or code range of the health check in the format `111,222,3XX`. It is allowed to use X as a wildcard (e.g.: 2XX). Must indicate valid HTTP response code(s). | `200` |
 | `expected-response-body` | string | A case insensitive sub-string to look for in the response body. If this string is not found, the server will be marked as unhealthy. | — |
+| `domain-forwarding` | bool | Automatically forward the domain name of the service (`services.domain` parameter) to the `Host` header for each HTTP request. If the `Host` header is specified manually (via `headers` parameter), there will be **no forwarding** even if the current parameter is set to `true`. | `true` |
+| `ignore-ssl-errors` | bool | Ignore SSL certificate validation errors (applies to `HTTPS` schema only). | `false` |
     
 Exec health check provider (`exec`):
 |Parameter name|Type|Description|Default|
