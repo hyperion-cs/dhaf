@@ -15,7 +15,7 @@ namespace Dhaf.Node
 {
     public interface IDhafNode
     {
-        Task TactWithInterval();
+        Task TactWithInterval(CancellationToken cancellationToken);
 
         Task<ServiceStatus> GetServiceStatus(string serviceName);
         Task<IEnumerable<ServiceStatus>> GetServicesStatus();
@@ -84,8 +84,6 @@ namespace Dhaf.Node
                 _logger.LogCritical(err);
                 throw new ArgumentException(err);
             }
-
-            _backgroundTasks.HeartbeatWithIntervalTask = HeartbeatWithInterval();
         }
 
         public async Task<ServiceStatus> GetServiceStatus(string serviceName)
@@ -229,14 +227,15 @@ namespace Dhaf.Node
             return candidates;
         }
 
-        public async Task TactWithInterval()
+        public async Task TactWithInterval(CancellationToken cancellationToken)
         {
             var interval = _clusterConfig.Dhaf.TactInterval ?? _dhafInternalConfig.DefTactInterval;
+            _backgroundTasks.HeartbeatWithIntervalTask = HeartbeatWithInterval(cancellationToken);
 
-            while (true)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 await Tact();
-                await Task.Delay(TimeSpan.FromSeconds(interval));
+                await Task.Delay(TimeSpan.FromSeconds(interval), cancellationToken).ContinueWith(x => { });
             }
         }
 
@@ -629,14 +628,14 @@ namespace Dhaf.Node
             }
         }
 
-        protected async Task HeartbeatWithInterval()
+        protected async Task HeartbeatWithInterval(CancellationToken cancellationToken)
         {
             var interval = _clusterConfig.Dhaf.HeartbeatInterval ?? _dhafInternalConfig.DefHeartbeatInterval;
 
-            while (!_backgroundTasks.HeartbeatWithIntervalCts.IsCancellationRequested)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 await Heartbeat();
-                await Task.Delay(TimeSpan.FromSeconds(interval));
+                await Task.Delay(TimeSpan.FromSeconds(interval), cancellationToken).ContinueWith(x => { }); ;
             }
         }
 
@@ -1042,8 +1041,6 @@ namespace Dhaf.Node
         public class DhafNodeBackgroundTasks
         {
             public Task HeartbeatWithIntervalTask { get; set; }
-            public CancellationTokenSource HeartbeatWithIntervalCts { get; set; }
-                = new CancellationTokenSource();
         }
     }
 }

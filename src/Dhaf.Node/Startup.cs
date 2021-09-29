@@ -2,41 +2,45 @@
 using dotnet_etcd;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Dhaf.Node
 {
-    public class Startup
+    public class Startup : IHostedService
     {
+        private readonly ILogger<IDhafNode> _dhafNodeLogger;
         private readonly IServiceProvider _servicesProvider;
         private readonly IConfiguration _configuration;
         private readonly ArgsOptions _argsOptions;
 
-        public Startup(IServiceProvider servicesProvider,
+        public Startup(ILogger<IDhafNode> dhafNodeLogger,
+            IServiceProvider servicesProvider,
             IConfiguration configuration,
             ArgsOptions argsOptions)
         {
+            _dhafNodeLogger = dhafNodeLogger;
             _servicesProvider = servicesProvider;
             _configuration = configuration;
             _argsOptions = argsOptions;
         }
 
-        public async Task Go()
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
             var dhafInternalConfig = new DhafInternalConfig();
             _configuration.Bind(dhafInternalConfig);
 
-            var dhafNodeLogger = _servicesProvider.GetRequiredService<ILogger<IDhafNode>>();
             var swLogger = _servicesProvider.GetRequiredService<ILogger<ISwitcher>>();
             var hcLogger = _servicesProvider.GetRequiredService<ILogger<IHealthChecker>>();
             var ntfLogger = _servicesProvider.GetRequiredService<ILogger<INotifier>>();
 
-            dhafNodeLogger.LogInformation($"Configuration file is <{_argsOptions.ConfigPath}>.");
+            _dhafNodeLogger.LogInformation($"Configuration file is <{_argsOptions.ConfigPath}>.");
 
             var extensionsScope = ExtensionsScopeFactory
                 .GetExtensionsScope(dhafInternalConfig.Extensions);
@@ -47,15 +51,15 @@ namespace Dhaf.Node
             var etcdClient = new EtcdClient(parsedClusterConfig.Etcd.Hosts);
 
 
-            dhafNodeLogger.LogInformation($"I am <{parsedClusterConfig.Dhaf.NodeName}> in the <{parsedClusterConfig.Dhaf.ClusterName}> cluster.");
+            _dhafNodeLogger.LogInformation($"I am <{parsedClusterConfig.Dhaf.NodeName}> in the <{parsedClusterConfig.Dhaf.ClusterName}> cluster.");
 
             var services = new ConcurrentBag<DhafService>();
 
             var extInitorTasks = parsedClusterConfig.Services.Select(async servConf =>
             {
-                dhafNodeLogger.LogDebug($"Switcher provider for <{servConf.Name}> is <{servConf.Switcher.ExtensionName}>.");
+                _dhafNodeLogger.LogDebug($"Switcher provider for <{servConf.Name}> is <{servConf.Switcher.ExtensionName}>.");
 
-                dhafNodeLogger
+                _dhafNodeLogger
                     .LogDebug($"Health checker provider for <{servConf.Name}> is <{servConf.HealthChecker.ExtensionName}>.");
 
                 var healthCheckerTemplate = extensionsScope.HealthCheckers
@@ -132,23 +136,25 @@ namespace Dhaf.Node
             }
 
             IDhafNode dhafNode = new DhafNode(parsedClusterConfig, dhafInternalConfig,
-                services, notifiers, etcdClient, dhafNodeLogger);
+                services, notifiers, etcdClient, _dhafNodeLogger);
 
-            dhafNodeLogger.LogTrace("[rest api] Init process...");
+            _dhafNodeLogger.LogTrace("[rest api] Init process...");
 
             var restApiFactory = new RestApiFactory();
             var restApiHost = parsedClusterConfig.Dhaf.WebApi.Host ?? dhafInternalConfig.WebApi.DefHost;
             var restApiPort = parsedClusterConfig.Dhaf.WebApi.Port ?? dhafInternalConfig.WebApi.DefPort;
             var restApiUrl = $"http://{restApiHost}:{restApiPort}/";
 
-            var resApiServer = restApiFactory.CreateWebServer(restApiUrl, dhafNode, dhafNodeLogger);
+            var resApiServer = restApiFactory.CreateWebServer(restApiUrl, dhafNode, _dhafNodeLogger);
             var restApiTask = resApiServer.RunAsync();
 
-            dhafNodeLogger.LogInformation($"[rest api] Started on {restApiUrl}.");
-            dhafNodeLogger.LogInformation("Node has been successfully initialized.");
+            _dhafNodeLogger.LogInformation($"[rest api] Started on {restApiUrl}.");
+            _dhafNodeLogger.LogInformation("Node has been successfully initialized.");
 
-            await dhafNode.TactWithInterval();
+            await dhafNode.TactWithInterval(cancellationToken);
             resApiServer.Dispose();
         }
+
+        public async Task StopAsync(CancellationToken cancellationToken) { }
     }
 }

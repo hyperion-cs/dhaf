@@ -1,0 +1,87 @@
+name: Linux-x64
+
+on:
+  push:
+    tags:
+      - 'v*.*.*-linux-x64'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: setup .net
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+
+    - name: restore dependencies
+      run: dotnet restore src/Dhaf.sln
+
+    # TODO: `--no-dependencies` using (this is difficult because extensions have their own directory, and they cannot detect the root `refs` directory)
+
+    - name: build core
+      run: dotnet publish src/Dhaf.Core/Dhaf.Core.csproj  --configuration Release --no-restore -nowarn:CS1998 -r linux-x64 -o bin/linux-x64/core /p:DebugType=None /p:DebugSymbols=false
+
+    - name: build dhaf.node
+      run: dotnet publish src/Dhaf.Node/Dhaf.Node.csproj --configuration Release --no-dependencies --no-restore -nowarn:CS1998 -r linux-x64 -o bin/linux-x64 -p:PublishSingleFile=true --self-contained false /p:DebugType=None /p:DebugSymbols=false
+
+    - name: build dhaf.cli
+      run: dotnet publish src/Dhaf.CLI/Dhaf.CLI.csproj --configuration Release --no-dependencies --no-restore -nowarn:CS1998 -r linux-x64 -o bin/linux-x64 -p:PublishSingleFile=true --self-contained false /p:DebugType=None /p:DebugSymbols=false
+
+    - name: build core extensions
+      run: |
+        dotnet publish src/Dhaf.HealthCheckers.Web/Dhaf.HealthCheckers.Web.csproj --configuration Release --no-restore -nowarn:CS1998 -r linux-x64 -o bin/linux-x64/ext/hc/web /p:DebugType=None /p:DebugSymbols=false
+        dotnet publish src/Dhaf.HealthCheckers.Exec/Dhaf.HealthCheckers.Exec.csproj --configuration Release --no-restore -nowarn:CS1998 -r linux-x64 -o bin/linux-x64/ext/hc/exec /p:DebugType=None /p:DebugSymbols=false
+        
+        dotnet publish src/Dhaf.Switchers.Cloudflare/Dhaf.Switchers.Cloudflare.csproj --configuration Release --no-restore -nowarn:CS1998 -r linux-x64 -o bin/linux-x64/ext/sw/cloudflare /p:DebugType=None /p:DebugSymbols=false
+        dotnet publish src/Dhaf.Switchers.Exec/Dhaf.Switchers.Exec.csproj --configuration Release --no-restore -nowarn:CS1998 -r linux-x64 -o bin/linux-x64/ext/sw/exec /p:DebugType=None /p:DebugSymbols=false
+        
+        dotnet publish src/Dhaf.Notifiers.Email/Dhaf.Notifiers.Email.csproj --configuration Release --no-restore -nowarn:CS1998 -r linux-x64 -o bin/linux-x64/ext/ntf/email /p:DebugType=None /p:DebugSymbols=false
+        dotnet publish src/Dhaf.Notifiers.Telegram/Dhaf.Notifiers.Telegram.csproj --configuration Release --no-restore -nowarn:CS1998 -r linux-x64 -o bin/linux-x64/ext/ntf/tg /p:DebugType=None /p:DebugSymbols=false
+
+    - name: prepare artifacts
+      run: |
+        mkdir -p linux-x64-artifacts
+        mkdir -p linux-x64-artifacts/libs
+        mkdir -p linux-x64-artifacts/extensions/health-checkers/web
+        mkdir -p linux-x64-artifacts/extensions/health-checkers/exec
+        mkdir -p linux-x64-artifacts/extensions/switchers/cloudflare
+        mkdir -p linux-x64-artifacts/extensions/switchers/exec
+        mkdir -p linux-x64-artifacts/extensions/notifiers/email
+        mkdir -p linux-x64-artifacts/extensions/notifiers/tg
+
+        mv ./bin/linux-x64/Dhaf.Node linux-x64-artifacts/dhaf.node
+        mv ./bin/linux-x64/Dhaf.CLI linux-x64-artifacts/dhaf.cli
+        mv ./bin/linux-x64/appsettings.json ./bin/linux-x64/nlog.config linux-x64-artifacts
+        mv ./bin/linux-x64/core/* linux-x64-artifacts/libs
+
+        mv ./bin/linux-x64/ext/hc/web/* linux-x64-artifacts/extensions/health-checkers/web
+        mv ./bin/linux-x64/ext/hc/exec/* linux-x64-artifacts/extensions/health-checkers/exec
+        mv ./bin/linux-x64/ext/sw/cloudflare/* linux-x64-artifacts/extensions/switchers/cloudflare
+        mv ./bin/linux-x64/ext/sw/exec/* linux-x64-artifacts/extensions/switchers/exec
+        mv ./bin/linux-x64/ext/ntf/email/* linux-x64-artifacts/extensions/notifiers/email
+        mv ./bin/linux-x64/ext/ntf/tg/* linux-x64-artifacts/extensions/notifiers/tg
+
+    - name: upload artifacts
+      uses: actions/upload-artifact@master
+      with:
+        name: linux-x64-artifacts
+        path: linux-x64-artifacts
+
+    - name: set the release version from tag
+      run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+    - name: zip artifacts
+      uses: papeloto/action-zip@v1
+      with:
+        files: linux-x64-artifacts
+        recursive: true
+        dest: dhaf-${{ env.RELEASE_VERSION }}.zip
+
+    - name: release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags')
+      with:
+        files: dhaf-${{ env.RELEASE_VERSION }}.zip
