@@ -45,6 +45,12 @@ namespace Dhaf.HealthCheckers.Web
                 Timeout = _config.Timeout ?? _internalConfig.DefTimeout
             };
 
+            var ignoreSslErrors = _config.IgnoreSslErrors ?? _internalConfig.DefIgnoreSslErrors;
+            if (ignoreSslErrors)
+            {
+                _client.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
+            }
+
             _requestSchema = PrepareSchema(_config.Schema ?? _internalConfig.HttpSchema);
 
             _logger.LogInformation($"{Sign} Init OK.");
@@ -57,20 +63,28 @@ namespace Dhaf.HealthCheckers.Web
                 throw new Exception("The HTTP client is not initialized.");
             }
 
+            const int RETRYING_INIT_VALUE = 0;
+
             var port = _config.Port
                 ?? (_requestSchema == _internalConfig.HttpSchema
                        ? _internalConfig.DefHttpPort : _internalConfig.DefHttpsPort);
 
             var nc = _serviceConfig.NetworkConfigurations.FirstOrDefault(x => x.Id == options.NcId);
 
-            var uri = new Uri($"{_requestSchema}://{nc.IP}:{port}");
-
-            const int RETRYING_INIT_VALUE = 0;
+            var path = string.IsNullOrEmpty(_config.Path) ? _internalConfig.DefPath : _config.Path;
+            var uri = new Uri($"{_requestSchema}://{nc.IP}:{port}/{path}");
 
             DownReason? downReason = null;
-
             var request = new RestRequest(uri);
-            request.AddHeaders(_config.Headers ?? _internalConfig.DefHeaders);
+
+            var headers = _config.Headers ?? _internalConfig.DefHeaders;
+            request.AddHeaders(headers);
+
+            var hostHeader = headers.Keys.FirstOrDefault(x => x.ToUpper() == _internalConfig.HostHeader.ToUpper());
+            if (hostHeader is null && (_config.DomainForwarding ?? _internalConfig.DefDomainForwarding))
+            {
+                request.AddHeader(_internalConfig.HostHeader, _serviceConfig.Domain);
+            }
 
             var retries = _config.Retries ?? _internalConfig.DefRetries;
             var expectedCodes = _config.ExpectedCodes ?? _internalConfig.DefExpectedCodes;

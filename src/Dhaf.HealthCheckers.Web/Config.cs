@@ -16,5 +16,7 @@ namespace Dhaf.HealthCheckers.Web
         public int? Retries { get; set; }
         public string ExpectedCodes { get; set; }
         public string ExpectedResponseBody { get; set; }
+        public bool? DomainForwarding { get; set; }
+        public bool? IgnoreSslErrors { get; set; }
     }
 }

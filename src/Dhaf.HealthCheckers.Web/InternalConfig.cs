@@ -26,5 +26,10 @@ namespace Dhaf.HealthCheckers.Web
 
         public int MinTimeout { get; set; }
         public int MaxTimeout { get; set; }
+
+        public bool DefDomainForwarding { get; set; }
+        public bool DefIgnoreSslErrors { get; set; }
+
+        public string HostHeader { get; set; }
     }
 }
