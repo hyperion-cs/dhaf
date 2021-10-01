@@ -2,6 +2,7 @@
 # Dhaf
 ![linux_workflow](https://github.com/hyperion-cs/dhaf/actions/workflows/linux-x64.yml/badge.svg)
 ![win_workflow](https://github.com/hyperion-cs/dhaf/actions/workflows/win-x64.yml/badge.svg)
+![osx_workflow](https://github.com/hyperion-cs/dhaf/actions/workflows/osx-x64.yml/badge.svg)
 
 Distributed high availability failover, written in cross-platform C# [.NET](https://github.com/dotnet) (Linux, Windows and macOS supported).
 
