@@ -1,5 +1,6 @@
 # Dhaf
 Distributed high availability failover, written in cross-platform C# [.NET](https://github.com/dotnet) (Linux, Windows and macOS supported).
+![Image of Yaktocat](project_identity/github.png)
 
 # Why is it useful? 🚀
 Dhaf is a system that keeps your web service **always online** for the end user. It's available to everyone for free and without the need for special knowledge or complicated network infrastructure.
