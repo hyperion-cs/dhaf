@@ -2,6 +2,7 @@
 using Dhaf.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NLog;
 using NLog.Extensions.Logging;
@@ -18,26 +19,7 @@ namespace Dhaf.Node
 
             try
             {
-                var configuration = new ConfigurationBuilder()
-                   .SetBasePath(System.IO.Directory.GetCurrentDirectory())
-                   .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                   .Build();
-
-                var servicesProvider = BuildDi(configuration);
-                using (servicesProvider as IDisposable)
-                {
-                    ArgsOptions argsOptions = null;
-                    Parser.Default.ParseArguments<ArgsOptions>(args)
-                        .WithParsed(p => argsOptions = p);
-
-                    if (argsOptions is null)
-                    {
-                        throw new ArgumentNullException("The command line arguments cannot be null.");
-                    }
-
-                    var startup = new Startup(servicesProvider, configuration, argsOptions);
-                    await startup.Go();
-                }
+                await CreateHostBuilder(args).Build().RunAsync();
             }
             catch (ConfigParsingException ex)
             {
@@ -58,16 +40,36 @@ namespace Dhaf.Node
             }
         }
 
-        private static IServiceProvider BuildDi(IConfiguration config)
-        {
-            return new ServiceCollection()
-               .AddLogging(loggingBuilder =>
-               {
-                   loggingBuilder.ClearProviders();
-                   loggingBuilder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
-                   loggingBuilder.AddNLog(config);
-               })
-               .BuildServiceProvider();
-        }
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureAppConfiguration((hostingContext, config) =>
+                {
+                    config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+                    config.AddEnvironmentVariables();
+                })
+                .ConfigureServices(services =>
+                {
+
+                    services.AddSingleton(servicesProvider =>
+                    {
+                        ArgsOptions argsOptions = null;
+                        Parser.Default.ParseArguments<ArgsOptions>(args)
+                            .WithParsed(p => argsOptions = p);
+
+                        if (argsOptions is null)
+                        {
+                            throw new ArgumentNullException("The command line arguments cannot be null.");
+                        }
+
+                        return argsOptions;
+                    })
+                    .AddHostedService<Startup>()
+                    .AddLogging(loggingBuilder =>
+                    {
+                        loggingBuilder.ClearProviders();
+                        loggingBuilder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                        loggingBuilder.AddNLog();
+                    });
+                });
     }
 }

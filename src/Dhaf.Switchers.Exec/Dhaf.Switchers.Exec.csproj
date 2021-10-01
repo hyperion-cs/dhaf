@@ -1,25 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net5</TargetFramework>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net5</TargetFramework>
+		<RuntimeIdentifiers>linux-x64;osx-x64;win-x64</RuntimeIdentifiers>
+		<InvariantGlobalization>true</InvariantGlobalization>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Dhaf.Core\Dhaf.Core.csproj">
-      <Private>false</Private>
-      <ExcludeAssets>runtime</ExcludeAssets>
-    </ProjectReference>
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Dhaf.Core\Dhaf.Core.csproj">
+			<Private>false</Private>
+			<ExcludeAssets>runtime</ExcludeAssets>
+		</ProjectReference>
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Update="extension.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  
-  <Target Name="CopyExtension" Condition="'$(Configuration)' == 'Debug'" AfterTargets="AfterBuild">
-    <Copy SourceFiles="$(OutDir)\Dhaf.Switchers.Exec.dll;$(OutDir)\Dhaf.Switchers.Exec.deps.json;$(OutDir)\extension.json"
-          DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net5\extensions\switchers\exec" />
-  </Target>
+	<ItemGroup>
+		<None Update="extension.json">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
+	<Target Name="CopyExtension" Condition="'$(Configuration)' == 'Debug'" AfterTargets="AfterBuild">
+		<Copy SourceFiles="$(OutDir)\Dhaf.Switchers.Exec.dll;$(OutDir)\Dhaf.Switchers.Exec.deps.json;$(OutDir)\extension.json"
+			  DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net5\extensions\switchers\exec" />
+	</Target>
 
 </Project>
