@@ -6,6 +6,7 @@
 
 Distributed high availability failover, written in cross-platform C# [.NET](https://github.com/dotnet) (Linux, Windows and macOS supported).
 
+You can [join](https://t.me/joinchat/Zl4GO7pcBxw3NTIy) a Telegram chat to discuss **dhaf**.
 
 # Why is it useful? 🚀
 Dhaf is a system that keeps your web service **always online** for the end user. It's available to everyone for free and without the need for special knowledge or complicated network infrastructure.
@@ -50,10 +51,19 @@ The following is recommended for stable operation of this solution:
 
 # Quick Start
 Below is a simple example of how to make dhaf work (with Cloudflare provider as switcher).
-1. Suppose you have two similar servers in different data centers, which both provide your web-service. They have the following IP addresses: 111.111.111.11 (primary) and 222.222.222.222 (secondary);
-2. Let us also assume that you have prepared three dhaf servers in different datacenters. They have the following IP addresses: 111.1.1.1, 112.2.2.2, 113.3.3.3;
-3. Install and start etcd on all the dhaf servers (if you have not already done so). See details [here](https://etcd.io/docs/v3.5/quickstart/) and [here](https://etcd.io/docs/v3.5/op-guide/clustering/);
-4. Download and install our [dhaf builds](https://github.com/hyperion-cs/dhaf/releases) or build from sources (requires .NET >= 5.0);
+1. Suppose you have two similar servers in different data centers, which both provide your web-service:
+    |Name|IP|Priority|
+    | :-: | :-: | :-: |
+    |serv1|111.111.111.11|1|
+    |serv2|222.222.222.22|2|
+2. Let us also assume that you have prepared three dhaf servers in different datacenters:
+    |Name|IP|
+    | :-: | :-: |
+    |d1|111.1.1.1|
+    |d2|112.2.2.2|
+    |d3|113.3.3.3|
+3. Install and start etcd on all the dhaf servers (if you have not already done so). See details [here](https://etcd.io/docs/v3.5/quickstart/) and [here](https://etcd.io/docs/v3.5/op-guide/clustering/).
+4. Download and install our [dhaf builds](https://github.com/hyperion-cs/dhaf/releases) or build from sources (requires .NET >= 5.0) on all the dhaf servers;
 5. Create a Cloudflare account with a free plan (this will be enough). Transfer there DNS management for your domain name `foo.com`. Also note that your domain name must have only one A record in the DNS that has the Clouflare proxying checkbox checked. Otherwise, you will get [round-robin](https://en.wikipedia.org/wiki/Round-robin_DNS) detrimental for our purposes and/or unacceptably slow updating of DNS records for end clients;
     - ⚠️ Warning! To combat scammers, Cloudflare does not allow DNS configuration via the official API for domains with a .cf, .ga, .gq, .ml, or .tk TLD (top-level domain). Thus, it is not possible to work with them in **dhaf** either. However, it is still possible to manually configure them in Cloudflare Dashboard.
 6. Using the Clouflare dashboard, [create](https://dash.cloudflare.com/profile/api-tokens) an API token (if you have not already done so) with access to edit the DNS records of your domain zone. You also need to set an adequate TTL (lifetime) of your token, and keep it up to date.
@@ -70,10 +80,10 @@ services:
   - name: main
     domain: foo.com
     entry-points:
-      - name: nc-1
+      - name: ep-1
         ip: 111.111.111.11
-      - name: nc-2
-        ip: 222.222.222.222
+      - name: ep-2
+        ip: 222.222.222.22
     switcher:
       type: cloudflare
       api-token: <your_api_token>
@@ -82,7 +92,7 @@ services:
       type: web
       schema: http
 ```
-8. As you can see from the value of the `dhaf.node-name` parameter of the configuration file above, it is intended for the first dhaf node. Create two more of these, replacing the value of the parameter `dhaf.node-name` with `node-2` and `node-3` respectively (as well as the name of the config so as not to get confused.);
+8. As you can see from the value of the `dhaf.node-name` parameter of the configuration file above, it is intended for the first dhaf node. Create two more of these, replacing the value of the parameter `dhaf.node-name` with `node-2` and `node-3` respectively (as well as the name of the config so as not to get confused);
 9. The only thing left to do is to run dhaf on all dhaf servers (don't forget to substitute the appropriate configuration file):
 ```shell
 ./dhaf.node --config config-n1.dhaf
@@ -93,12 +103,17 @@ services:
 ```
 11. Congratulations! Everything works. And now you can test failures of your servers as an experiment.
 
+# What are the benefits of dhaf being a cluster?
+Well, such as these:
+- If one of the dhaf cluster nodes fails, the cluster itself will still continue to work (as long as possible). If the leader fails, a so-called race for the leader will immediately [begin](https://en.wikipedia.org/wiki/Leader_election), i.e. a new leader will be determined by the "first come, first served" method;
+- Health checks for the web service are performed by all available nodes, and the decision about (un)availability of it is collective. And only if the majority considers that the service is unavailable, the cluster leader starts the procedure to switch the entry point to the web service (in the case of Cloudflare's switcher provider, it changes the A-record in Cloudflare DNS to the next server). This elegantly solves the problem when one of the nodes has decided that the web service is unreachable, although in fact it is not true for real users.
+
 # Available CLI commands:
 - `./dhaf.cli status-dhaf --config <config_file>` - show dhaf cluster status information.
 - `./dhaf.cli status-service --service <service_name> --config <config_file>` - show service status information.
 - `./dhaf.cli status-service --config <config_file>` - show all services status information.
 - `./dhaf.cli switchover-candidates --service <service_name> --config <config_file>` - show suitable entry points for switchover.
-- `./dhaf.cli switchover-to <ep> --service <service_name> --config <config_file>` - switchover to the `<nc>` entry point.
+- `./dhaf.cli switchover-to <ep> --service <service_name> --config <config_file>` - switchover to the `<ep>` entry point.
 - `./dhaf.cli switchover-purge --config <config_file>` - purge the switchover requirement.
 - `./dhaf.cli node-decommission <node_name> -config <config_file>` - decommission the dhaf node `<node_name>`.
 - `./dhaf.cli help` - display more information on a specific command.
@@ -215,7 +230,17 @@ Telegram bot prerequisites:
 # Dhaf as a service, automatically started at OS startup
 This is done e.g. via [Systemd](https://en.wikipedia.org/wiki/Systemd) on Linux. For Windows you can use [Windows service](https://en.wikipedia.org/wiki/Windows_service).
 The templates can be found in the `templates` folder of the current repository.
-    
+
+# Some tips for dhaf cooking
+- Do not host dhaf cluster nodes on the same servers as your web service;
+- It is possible (and logical) to place the etcd nodes in the same place as dhaf;
+- Number of nodes etcd should not be less than three (then it is possible to survive the fall of one of the nodes). Read more [here](https://etcd.io/docs/v3.5/faq/#what-is-failure-tolerance);
+- The number of dhaf nodes should be at least two, but considering that they usually work in the same place as etcd, it is logical to make them three as well. However, even with a two-node cluster, dhaf can survive a failure of one of the nodes;
+- For a dhaf cluster node (even in combination with etcd) the cheapest virtual server (including cloud servers) is enough, because the load on it is minimal due to the fact that it is not engaged in serving a bunch of users - it deals with the health of your web service;
+- Locate dhaf cluster nodes (and etcd) at different providers in different data centers. This prevents you from having to deal with the unpleasant situation where one of the providers has its entire infrastructure down. Also, nodes should be geographically located where you expect to use your service (i.e. in terms of the network "bring" nodes closer to real users);
+- The entry points for the web service in the dhaf configuration should be at least two, but perhaps this is obvious;
+- If you have a desire and/or need to load balance, that is not what dhaf is for. Its purpose is to provide a working entry point into a web service, and it is by no means a (reverse) proxy server. So, if there is a need for the above, then the entry points in the dhaf configuration should be servers with e.g. [HAProxy](https://en.wikipedia.org/wiki/HAProxy) (or its equivalent), whose functionality is designed to do just that.
+
 # Terminology
 - Failover — emergency switching of the entry point in automatic mode;
 - Switchover — knowingly manually switching entry points (for maintenance, testing, etc.);
