@@ -50,7 +50,16 @@ namespace Dhaf.Core.Tests
                 }
             };
 
-            var configParser = new ClusterConfigParser("Data/test_config_1.dhaf", extensionsScope);
+            var internalConfig = new DhafInternalConfig
+            {
+                DefHeartbeatInterval = 5,
+                Etcd = new DhafInternalConfigEtcd
+                {
+                    DefLeaderKeyTtl = 20,
+                }
+            };
+
+            var configParser = new ClusterConfigParser("Data/test_config_1.dhaf", extensionsScope, internalConfig);
             var parsedConfig = await configParser.Parse();
 
             Assert.NotNull(parsedConfig.Dhaf);

@@ -74,16 +74,6 @@ namespace Dhaf.Node
 
             _etcdClient = etcdClient;
             _backgroundTasks = new DhafNodeBackgroundTasks();
-
-            // TODO: Transfer to the cluster configuration parser.
-            if ((_clusterConfig.Etcd.LeaderKeyTtl ?? _dhafInternalConfig.Etcd.DefLeaderKeyTtl)
-                <= (_clusterConfig.Dhaf.HeartbeatInterval ?? _dhafInternalConfig.DefHeartbeatInterval))
-            {
-                var err = "The TTL of the leader key in the ETCD must be greater than the heartbeat interval of the Dhaf node.";
-
-                _logger.LogCritical(err);
-                throw new ArgumentException(err);
-            }
         }
 
         public async Task<ServiceStatus> GetServiceStatus(string serviceName)

@@ -13,19 +13,23 @@ namespace Dhaf.Core
     public class ClusterConfigParser
     {
         public string Path { get; set; }
-        public ExtensionsScope ExtensionsScope { get; set; }
+        public ExtensionsScope ExtensionsScope { get; private set; }
+        public DhafInternalConfig InternalConfig { get; private set; }
 
         public ClusterConfigParser(string path)
         {
             Path = path;
         }
 
-        public ClusterConfigParser(string path, ExtensionsScope extensionsScope)
+        public ClusterConfigParser(string path, ExtensionsScope extensionsScope, DhafInternalConfig internalConfig)
         {
             Path = path;
 
             ExtensionsScope = extensionsScope
                 ?? throw new Exception("Extensions scope cannot be null when using the current constructor.");
+
+            InternalConfig = internalConfig
+                ?? throw new Exception("Dhaf internal config cannot be null when using the current constructor.");
         }
 
         public async Task<ClusterConfig> Parse()
@@ -216,6 +220,12 @@ namespace Dhaf.Core
             if (uniqueNotifierNamesCount != config.Notifiers.Count)
             {
                 throw new ConfigParsingException(1411, $"Not all notifier names are unique.");
+            }
+
+            if ((config.Etcd.LeaderKeyTtl ?? InternalConfig.Etcd.DefLeaderKeyTtl)
+                <= (config.Dhaf.HeartbeatInterval ?? InternalConfig.DefHeartbeatInterval))
+            {
+                throw new ConfigParsingException(1412, $"The TTL of the leader key in the ETCD must be greater than the heartbeat interval of the Dhaf node.");
             }
         }
 
