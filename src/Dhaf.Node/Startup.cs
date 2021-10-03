@@ -102,7 +102,7 @@ namespace Dhaf.Node
 
                 services.Add(new DhafService(servConf.Name,
                     servConf.Domain,
-                    servConf.NetworkConfigurations,
+                    servConf.EntryPoints,
                     switcher, healthChecker));
             });
 

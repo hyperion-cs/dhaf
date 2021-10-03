@@ -4,7 +4,7 @@
     {
         public string DhafNode { get; set; }
 
-        /// <summary>Network configuration ID.</summary>
-        public string NCId { get; set; }
+        /// <summary>Entry point ID.</summary>
+        public string EpId { get; set; }
     }
 }

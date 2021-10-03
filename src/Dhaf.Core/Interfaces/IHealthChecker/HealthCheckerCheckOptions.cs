@@ -2,7 +2,7 @@
 {
     public class HealthCheckerCheckOptions
     {
-        /// <summary>Network Configuration ID.</summary>
-        public string NcId { get; set; }
+        /// <summary>Entry point ID.</summary>
+        public string EntryPointId { get; set; }
     }
 }

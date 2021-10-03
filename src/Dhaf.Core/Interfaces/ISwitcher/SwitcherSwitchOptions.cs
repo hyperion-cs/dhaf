@@ -2,7 +2,7 @@
 {
     public class SwitcherSwitchOptions
     {
-        public string NcId { get; set; }
+        public string EntryPointId { get; set; }
         public bool Failover { get; set; }
     }
 }

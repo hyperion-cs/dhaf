@@ -8,8 +8,7 @@ namespace Dhaf.Core
         public string Name { get; set; }
         public string Domain { get; set; }
 
-        [YamlMember(Alias = "network-conf")]
-        public List<ClusterServiceNetworkConfig> NetworkConfigurations { get; set; } = new();
+        public List<ClusterServiceEntryPoint> EntryPoints { get; set; } = new();
         public ISwitcherConfig Switcher { get; set; }
         public IHealthCheckerConfig HealthChecker { get; set; }
     }

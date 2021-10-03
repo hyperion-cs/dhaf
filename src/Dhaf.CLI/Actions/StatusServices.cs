@@ -26,7 +26,7 @@ namespace Dhaf.CLI
 
             foreach (var serviceStatus in response.Data)
             {
-                var isUp = serviceStatus.NetworkConfigurations
+                var isUp = serviceStatus.EntryPoints
                     .Any(x => x.Healthy) ? "[green]UP[/]" : "[red]DOWN[/]";
 
                 var sw = serviceStatus.SwitchoverRequirement is null ? "NO" : $"YES (to <{serviceStatus.SwitchoverRequirement}>)";
@@ -45,32 +45,32 @@ namespace Dhaf.CLI
                 AnsiConsole.Render(summaryTable);
 
                 Console.WriteLine();
-                var ncTable = new Table
+                var epTable = new Table
                 {
                     Width = TABLE_WIDTH
                 };
 
-                ncTable.Border(TableBorder.Ascii2);
-                ncTable.Title = new TableTitle($"Service \"{serviceStatus.Name}\" -> Network configurations");
-                ncTable.AddColumns("Priority", "Name", "Healthy", "Status");
-                ncTable.Columns[0].Centered();
-                ncTable.Columns[1].Centered();
-                ncTable.Columns[2].Centered();
-                ncTable.Columns[3].Centered();
+                epTable.Border(TableBorder.Ascii2);
+                epTable.Title = new TableTitle($"Service \"{serviceStatus.Name}\" -> Entry points");
+                epTable.AddColumns("Priority", "Name", "Healthy", "Status");
+                epTable.Columns[0].Centered();
+                epTable.Columns[1].Centered();
+                epTable.Columns[2].Centered();
+                epTable.Columns[3].Centered();
 
-                foreach (var nc in serviceStatus.NetworkConfigurations)
+                foreach (var nc in serviceStatus.EntryPoints)
                 {
                     var status = nc.Healthy ? "READY" : "DISABLED";
-                    if (nc.Name == serviceStatus.CurrentNcName)
+                    if (nc.Name == serviceStatus.CurrentEntryPointName)
                     {
                         status = "[white]CURRENT[/]";
                     }
 
-                    ncTable.AddRow(nc.Priority.ToString(), nc.Name,
+                    epTable.AddRow(nc.Priority.ToString(), nc.Name,
                         nc.Healthy ? "[green]Yes[/]" : "[red]No[/]", status);
                 }
 
-                AnsiConsole.Render(ncTable);
+                AnsiConsole.Render(epTable);
 
                 const char SEP_CHAR = '=';
                 Console.WriteLine(new string(SEP_CHAR, TABLE_WIDTH) + "\n");

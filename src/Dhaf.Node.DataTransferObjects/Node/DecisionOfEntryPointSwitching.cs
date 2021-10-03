@@ -1,6 +1,6 @@
 ﻿namespace Dhaf.Node
 {
-    public class DecisionOfNetworkConfigurationSwitching
+    public class DecisionOfEntryPointSwitching
     {
         public bool IsRequired { get; set; }
         public bool Failover { get; set; }

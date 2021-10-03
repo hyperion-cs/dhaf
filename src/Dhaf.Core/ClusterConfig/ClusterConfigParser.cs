@@ -163,28 +163,28 @@ namespace Dhaf.Core
                     throw new ConfigParsingException(1403, $"Domain name is not set for the \"{serivce.Name}\" service.");
                 }
 
-                if (!serivce.NetworkConfigurations.Any())
+                if (!serivce.EntryPoints.Any())
                 {
-                    throw new ConfigParsingException(1402, $"No network configurations were found for the \"{serivce.Name}\" service.");
+                    throw new ConfigParsingException(1402, $"No entry points were found for the \"{serivce.Name}\" service.");
                 }
 
-                foreach (var nc in serivce.NetworkConfigurations)
+                foreach (var entryPoint in serivce.EntryPoints)
                 {
-                    if (!nameRegex.IsMatch(nc.Id ?? string.Empty))
+                    if (!nameRegex.IsMatch(entryPoint.Id ?? string.Empty))
                     {
                         throw new ConfigParsingException(1400,
-                            incorrectNameErr($"service <{serivce.Name}>.network-conf.name", nc.Id));
+                            incorrectNameErr($"service <{serivce.Name}>.entry-points.name", entryPoint.Id));
                     }
                 }
 
-                var uniqueNcNamesCount = serivce.NetworkConfigurations
+                var uniqueNcNamesCount = serivce.EntryPoints
                     .Select(x => x.Id)
                     .Distinct()
                     .Count();
 
-                if (uniqueNcNamesCount != serivce.NetworkConfigurations.Count)
+                if (uniqueNcNamesCount != serivce.EntryPoints.Count)
                 {
-                    throw new ConfigParsingException(1410, $"Not all network configuration names " +
+                    throw new ConfigParsingException(1410, $"Not all entry point names " +
                         $"in service \"{serivce.Name}\" are unique.");
                 }
             }

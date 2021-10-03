@@ -18,7 +18,7 @@ namespace Dhaf.Switchers.Cloudflare
 
         protected string _zoneId;
         protected string _dnsRecordAId;
-        protected string _currentNetworkConfigurationId;
+        protected string _currentEntryPointId;
 
         public string ExtensionName => "cloudflare";
         public string Sign => $"[{_serviceConfig.Name}/{ExtensionName} sw]";
@@ -69,8 +69,8 @@ namespace Dhaf.Switchers.Cloudflare
             {
                 _logger.LogWarning($"{Sign} The <{_serviceConfig.Domain}> domain name has no <A> record.\nAutomatically insert the necessary <A> record...");
 
-                var primaryNC = _serviceConfig.NetworkConfigurations.FirstOrDefault();
-                var addRecordResponse = await CreateDnsRecord(_zoneId, _serviceConfig.Domain, "A", primaryNC.IP);
+                var primaryEntryPoint = _serviceConfig.EntryPoints.FirstOrDefault();
+                var addRecordResponse = await CreateDnsRecord(_zoneId, _serviceConfig.Domain, "A", primaryEntryPoint.IP);
 
                 if (!addRecordResponse.Success)
                 {
@@ -82,22 +82,22 @@ namespace Dhaf.Switchers.Cloudflare
                 _logger.LogInformation($"{Sign} <A> record for the domain <{_serviceConfig.Domain}> has been successfully added.");
 
                 dnsRecord = addRecordResponse.Result;
-                _currentNetworkConfigurationId = primaryNC.Id;
+                _currentEntryPointId = primaryEntryPoint.Id;
             }
             else
             {
-                var currentNC = _serviceConfig.NetworkConfigurations.FirstOrDefault(x => x.IP == dnsRecord.Content);
-                if (currentNC == null)
+                var currentEntryPoint = _serviceConfig.EntryPoints.FirstOrDefault(x => x.IP == dnsRecord.Content);
+                if (currentEntryPoint == null)
                 {
                     _logger.LogWarning($"{Sign} <A> record for the domain <{_serviceConfig.Domain}> contains an unknown IP address. Automatic replacement with the highest-priority IP...");
 
-                    var primaryNC = _serviceConfig.NetworkConfigurations.FirstOrDefault();
-                    await EditDnsRecord(_zoneId, _dnsRecordAId, "A", _serviceConfig.Domain, primaryNC.IP);
-                    _currentNetworkConfigurationId = primaryNC.Id;
+                    var primaryEntryPoint = _serviceConfig.EntryPoints.FirstOrDefault();
+                    await EditDnsRecord(_zoneId, _dnsRecordAId, "A", _serviceConfig.Domain, primaryEntryPoint.IP);
+                    _currentEntryPointId = primaryEntryPoint.Id;
                 }
                 else
                 {
-                    _currentNetworkConfigurationId = currentNC.Id;
+                    _currentEntryPointId = currentEntryPoint.Id;
                 }
             }
 
@@ -116,21 +116,21 @@ namespace Dhaf.Switchers.Cloudflare
 
         public async Task Switch(SwitcherSwitchOptions options)
         {
-            var nc = _serviceConfig.NetworkConfigurations.FirstOrDefault(x => x.Id == options.NcId);
+            var entryPoint = _serviceConfig.EntryPoints.FirstOrDefault(x => x.Id == options.EntryPointId);
 
-            _logger.LogInformation($"{Sign} Switch to NC <{nc.Id}> requested...");
+            _logger.LogInformation($"{Sign} Switch to entry point <{entryPoint.Id}> requested...");
             _logger.LogDebug($"{Sign} Failover: {options.Failover}");
-            _logger.LogDebug($"{Sign} New IP: {nc.IP}");
+            _logger.LogDebug($"{Sign} New IP: {entryPoint.IP}");
 
-            await EditDnsRecord(_zoneId, _dnsRecordAId, "A", _serviceConfig.Domain, nc.IP);
-            _currentNetworkConfigurationId = nc.Id;
+            await EditDnsRecord(_zoneId, _dnsRecordAId, "A", _serviceConfig.Domain, entryPoint.IP);
+            _currentEntryPointId = entryPoint.Id;
 
-            _logger.LogInformation($"{Sign} Successfully switched to NC <{nc.Id}>.");
+            _logger.LogInformation($"{Sign} Successfully switched to entry point <{entryPoint.Id}>.");
         }
 
-        public async Task<string> GetCurrentNetworkConfigurationId()
+        public async Task<string> GetCurrentEntryPointId()
         {
-            return _currentNetworkConfigurationId;
+            return _currentEntryPointId;
         }
 
         public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role) { }

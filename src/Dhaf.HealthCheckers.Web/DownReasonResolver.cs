@@ -9,7 +9,7 @@ namespace Dhaf.HealthCheckers.Web
         UnexpectedResponseBody = 2,
         NotCompleted = 3,
         SslPolicyErrors = 4,
-        NetworkOrFrameworkException = 5
+        NetworkOrHttpFrameworkException = 5
     }
 
     public static class DownReasonResolver
@@ -33,7 +33,7 @@ namespace Dhaf.HealthCheckers.Web
             { DownReason.UnexpectedResponseBody, "Unexpected response body" },
             { DownReason.NotCompleted, "Not completed" },
             { DownReason.SslPolicyErrors, "Ssl policy errors" },
-            { DownReason.NetworkOrFrameworkException, "Network or framework exception" }
+            { DownReason.NetworkOrHttpFrameworkException, "Network or http framework exception" }
         };
     }
 }

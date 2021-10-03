@@ -32,9 +32,9 @@ namespace Dhaf.Node
         }
 
         [Route(HttpVerbs.Get, "/switchover")]
-        public async Task<RestApiResponse> Switchover([QueryField(true)] string serviceName, [QueryField(true)] string ncId)
+        public async Task<RestApiResponse> Switchover([QueryField(true)] string serviceName, [QueryField(true)] string entryPointId)
         {
-            await _dhafNode.Switchover(serviceName, ncId);
+            await _dhafNode.Switchover(serviceName, entryPointId);
             return new RestApiResponse { Success = true };
         }
 
