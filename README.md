@@ -10,7 +10,7 @@ Distributed high availability failover, written in cross-platform C# [.NET](http
 # Why is it useful? 🚀
 Dhaf is a system that keeps your web service **always online** for the end user. It's available to everyone for free and without the need for special knowledge or complicated network infrastructure.
 
-Dhaf has switchers - various providers to manage network configurations (more on this below), health checkers and notifiers.
+Dhaf has switchers - various providers to manage entry points of web-service, health checkers and notifiers.
 It is extremely flexible, extensible and easy to use and configure.
 
 To avoid bogging you down with details right away, let's take a look at one of the great use cases below.
@@ -69,7 +69,7 @@ etcd:
 services:
   - name: main
     domain: foo.com
-    network-conf:
+    entry-points:
       - name: nc-1
         ip: 111.111.111.11
       - name: nc-2
@@ -97,8 +97,8 @@ services:
 - `./dhaf.cli status-dhaf --config <config_file>` - show dhaf cluster status information.
 - `./dhaf.cli status-service --service <service_name> --config <config_file>` - show service status information.
 - `./dhaf.cli status-service --config <config_file>` - show all services status information.
-- `./dhaf.cli switchover-candidates --service <service_name> --config <config_file>` - show suitable network configurations for switchover.
-- `./dhaf.cli switchover-to <nc> --service <service_name> --config <config_file>` - switchover to the `<nc>` network configuration.
+- `./dhaf.cli switchover-candidates --service <service_name> --config <config_file>` - show suitable entry points for switchover.
+- `./dhaf.cli switchover-to <ep> --service <service_name> --config <config_file>` - switchover to the `<nc>` entry point.
 - `./dhaf.cli switchover-purge --config <config_file>` - purge the switchover requirement.
 - `./dhaf.cli node-decommission <node_name> -config <config_file>` - decommission the dhaf node `<node_name>`.
 - `./dhaf.cli help` - display more information on a specific command.
@@ -110,8 +110,8 @@ Similar functionality to the CLI (because the CLI uses the REST API). Detailed d
 # Available providers (core extensions)
 |Type|Name|Description|
 | :-: | :-: | - |
-| switcher | cloudflare | Performs network configuration switching by quickly changing Cloudflare DNS records. |
-| switcher | exec | Switching the network configuration via an executable file (e.g. a Python script). |
+| switcher | cloudflare | Performs entry points switching by quickly changing Cloudflare DNS records. |
+| switcher | exec | Switching entry points via an executable file (e.g. a Python script). |
 | health checker | web | Checks the health of the http(s) service. |
 | health checker | exec | Checks the health of service via an executable file (e.g. a Python script). |
 | notifier | email | Email notifications from dhaf. |
@@ -129,9 +129,9 @@ Need another extension? Leave a [feature request](https://github.com/hyperion-cs
 | `services` | list | The list of services that dhaf will keep available. |
 | `services.name` | string | The name of the service. Only the characters `a-zA-Z0-9`, `-` (hyphen) and `_` are allowed. |
 | `services.domain` | string | Domain name for service <name>. For example, `site.com`. |
-| `services.network-conf` | object | List of network configurations for service <name> in **order** of priority. |
-| `services.network-conf.name` | string | The name of the network configuration. Only the characters `a-zA-Z0-9`, `-` (hyphen) and `_` are allowed. |
-| `services.network-conf.ip` | string | The IP address of the network configuration <name>. |
+| `services.entry-points` | object | List of entry points for service <name> in **order** of priority. |
+| `services.entry-points.name` | string | The name of the entry point. Only the characters `a-zA-Z0-9`, `-` (hyphen) and `_` are allowed. |
+| `services.entry-points.ip` | string | The IP address of the entry point <name>. |
 | `services.switcher` | object | Switcher for service <name>. |
 | `services.switcher.type` | object | Name (provider type) of switcher for service <name>. |
 | `services.health-checker` | object | Health checker for service <name>. |
@@ -159,7 +159,7 @@ Exec switcher provider (`exec`):
 |Parameter name|Type|Description|Default|
 | - | :-: | - | :-: |
 | `init` | string | Path to the executable file for provider initialization. | Required |
-| `switch` | string | Path to the executable file to switch. The command line arguments for switching will be passed: [network configuration name, network configuration ip].| Required |
+| `switch` | string | Path to the executable file to switch. The command line arguments for switching will be passed: [entry point name, entry point ip].| Required |
     
 ### Configurations for health check providers
 
@@ -183,7 +183,7 @@ Exec health check provider (`exec`):
 |Parameter name|Type|Description|Default|
 | - | :-: | - | :-: |
 | `init` | string | Path to the executable file for provider initialization. | Required |
-| `check` | string | Path to the executable file to health check. The command line arguments for health check will be passed: [network configuration name, network configuration ip]. Should return exit code 0 if the network configuration is considered healthy. | Required |
+| `check` | string | Path to the executable file to health check. The command line arguments for health check will be passed: [entry point name, entry point ip]. Should return exit code 0 if the entry point is considered healthy. | Required |
     
 ### Configurations for notifier providers
 ⚠️ Pay attention! There can be several of them in one cluster.
@@ -217,7 +217,7 @@ This is done e.g. via [Systemd](https://en.wikipedia.org/wiki/Systemd) on Linux.
 The templates can be found in the `templates` folder of the current repository.
     
 # Terminology
-- Failover — emergency switching of the network configuration in automatic mode;
-- Switchover — knowingly manually switching network configurations (for maintenance, testing, etc.);
-- Switching — automatically switching of the network configuration to the higher priority of the healthy ones.
+- Failover — emergency switching of the entry point in automatic mode;
+- Switchover — knowingly manually switching entry points (for maintenance, testing, etc.);
+- Switching — automatically switching of the entry point to the higher priority of the healthy ones.
     
