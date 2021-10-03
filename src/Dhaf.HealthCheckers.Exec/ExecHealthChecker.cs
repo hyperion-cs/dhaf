@@ -50,9 +50,9 @@ namespace Dhaf.HealthCheckers.Exec
 
         public async Task<HealthStatus> Check(HealthCheckerCheckOptions options)
         {
-            var nc = _serviceConfig.NetworkConfigurations.FirstOrDefault(x => x.Id == options.NcId);
+            var entryPoint = _serviceConfig.EntryPoints.FirstOrDefault(x => x.Id == options.EntryPointId);
 
-            var args = $"{nc.Id} {nc.IP}";
+            var args = $"{entryPoint.Id} {entryPoint.IP}";
             var execResults = Shell.Exec(_config.Check);
 
             if (execResults.Success && execResults.ExitCode == 0)

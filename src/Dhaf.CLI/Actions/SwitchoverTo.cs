@@ -10,7 +10,7 @@ namespace Dhaf.CLI
         public static async Task<int> ExecuteSwitchoverToAndReturnExitCode(SwitchoverToOptions opt)
         {
             await PrepareRestClient(opt);
-            var request = new RestRequest($"switchover?ncId={opt.NcName}&serviceName={opt.ServiceName}");
+            var request = new RestRequest($"switchover?entryPointId={opt.EpName}&serviceName={opt.ServiceName}");
 
             var response = await _restClient.GetAsync<RestApiResponse>(request);
             if (!response.Success)

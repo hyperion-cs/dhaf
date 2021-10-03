@@ -14,7 +14,7 @@ namespace Dhaf.Switchers.Exec
         private InternalConfig _internalConfig;
         private ClusterServiceConfig _serviceConfig;
 
-        protected string _currentNetworkConfigurationId = string.Empty;
+        protected string _currentEntryPointId = string.Empty;
 
         public string ExtensionName => "exec";
 
@@ -23,9 +23,9 @@ namespace Dhaf.Switchers.Exec
 
         public string Sign => $"[{_serviceConfig.Name}/{ExtensionName} sw]";
 
-        public async Task<string> GetCurrentNetworkConfigurationId()
+        public async Task<string> GetCurrentEntryPointId()
         {
-            return _currentNetworkConfigurationId;
+            return _currentEntryPointId;
         }
 
         public async Task Init(SwitcherInitOptions options)
@@ -49,20 +49,20 @@ namespace Dhaf.Switchers.Exec
             _logger.LogDebug($"{Sign} Init output: <{execResults.Output}>");
             _logger.LogDebug($"{Sign} Init total exec time: {execResults.TotalExecuteTime} ms.");
 
-            // The exec switcher MUST return the ID of the current network configuration
+            // The exec switcher MUST return the ID of the current entry point
             // if it initializes successfully.
-            var currentNcId = execResults.Output.Trim();
-            _currentNetworkConfigurationId = currentNcId;
+            var currentEpId = execResults.Output.Trim();
+            _currentEntryPointId = currentEpId;
 
             _logger.LogInformation($"{Sign} Init OK.");
         }
 
         public async Task Switch(SwitcherSwitchOptions options)
         {
-            var nc = _serviceConfig.NetworkConfigurations.FirstOrDefault(x => x.Id == options.NcId);
-            _logger.LogInformation($"{Sign} Switch to NC <{nc.Id}> requested...");
+            var entryPoint = _serviceConfig.EntryPoints.FirstOrDefault(x => x.Id == options.EntryPointId);
+            _logger.LogInformation($"{Sign} Switch to entry point <{entryPoint.Id}> requested...");
 
-            var args = $"{nc.Id} {nc.IP}";
+            var args = $"{entryPoint.Id} {entryPoint.IP}";
             var execResults = Shell.Exec(_config.Switch, args);
 
             if (!execResults.Success || execResults.ExitCode != 0)
@@ -74,8 +74,8 @@ namespace Dhaf.Switchers.Exec
             _logger.LogTrace($"{Sign} Switch output: <{execResults.Output}>");
             _logger.LogTrace($"{Sign} Switch total exec time: {execResults.TotalExecuteTime} ms.");
 
-            _currentNetworkConfigurationId = nc.Id;
-            _logger.LogInformation($"{Sign} Successfully switched to NC <{nc.Id}>.");
+            _currentEntryPointId = entryPoint.Id;
+            _logger.LogInformation($"{Sign} Successfully switched to entry point <{entryPoint.Id}>.");
         }
 
         public async Task DhafNodeRoleChangedEventHandler(DhafNodeRole role) { }

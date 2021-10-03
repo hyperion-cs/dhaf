@@ -13,19 +13,23 @@ namespace Dhaf.Core
     public class ClusterConfigParser
     {
         public string Path { get; set; }
-        public ExtensionsScope ExtensionsScope { get; set; }
+        public ExtensionsScope ExtensionsScope { get; private set; }
+        public DhafInternalConfig InternalConfig { get; private set; }
 
         public ClusterConfigParser(string path)
         {
             Path = path;
         }
 
-        public ClusterConfigParser(string path, ExtensionsScope extensionsScope)
+        public ClusterConfigParser(string path, ExtensionsScope extensionsScope, DhafInternalConfig internalConfig)
         {
             Path = path;
 
             ExtensionsScope = extensionsScope
                 ?? throw new Exception("Extensions scope cannot be null when using the current constructor.");
+
+            InternalConfig = internalConfig
+                ?? throw new Exception("Dhaf internal config cannot be null when using the current constructor.");
         }
 
         public async Task<ClusterConfig> Parse()
@@ -163,28 +167,28 @@ namespace Dhaf.Core
                     throw new ConfigParsingException(1403, $"Domain name is not set for the \"{serivce.Name}\" service.");
                 }
 
-                if (!serivce.NetworkConfigurations.Any())
+                if (!serivce.EntryPoints.Any())
                 {
-                    throw new ConfigParsingException(1402, $"No network configurations were found for the \"{serivce.Name}\" service.");
+                    throw new ConfigParsingException(1402, $"No entry points were found for the \"{serivce.Name}\" service.");
                 }
 
-                foreach (var nc in serivce.NetworkConfigurations)
+                foreach (var entryPoint in serivce.EntryPoints)
                 {
-                    if (!nameRegex.IsMatch(nc.Id ?? string.Empty))
+                    if (!nameRegex.IsMatch(entryPoint.Id ?? string.Empty))
                     {
                         throw new ConfigParsingException(1400,
-                            incorrectNameErr($"service <{serivce.Name}>.network-conf.name", nc.Id));
+                            incorrectNameErr($"service <{serivce.Name}>.entry-points.name", entryPoint.Id));
                     }
                 }
 
-                var uniqueNcNamesCount = serivce.NetworkConfigurations
+                var uniqueNcNamesCount = serivce.EntryPoints
                     .Select(x => x.Id)
                     .Distinct()
                     .Count();
 
-                if (uniqueNcNamesCount != serivce.NetworkConfigurations.Count)
+                if (uniqueNcNamesCount != serivce.EntryPoints.Count)
                 {
-                    throw new ConfigParsingException(1410, $"Not all network configuration names " +
+                    throw new ConfigParsingException(1410, $"Not all entry point names " +
                         $"in service \"{serivce.Name}\" are unique.");
                 }
             }
@@ -216,6 +220,12 @@ namespace Dhaf.Core
             if (uniqueNotifierNamesCount != config.Notifiers.Count)
             {
                 throw new ConfigParsingException(1411, $"Not all notifier names are unique.");
+            }
+
+            if ((config.Etcd.LeaderKeyTtl ?? InternalConfig.Etcd.DefLeaderKeyTtl)
+                <= (config.Dhaf.HeartbeatInterval ?? InternalConfig.DefHeartbeatInterval))
+            {
+                throw new ConfigParsingException(1412, $"The TTL of the leader key in the ETCD must be greater than the heartbeat interval of the Dhaf node.");
             }
         }
 

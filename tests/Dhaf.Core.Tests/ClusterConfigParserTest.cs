@@ -50,7 +50,16 @@ namespace Dhaf.Core.Tests
                 }
             };
 
-            var configParser = new ClusterConfigParser("Data/test_config_1.dhaf", extensionsScope);
+            var internalConfig = new DhafInternalConfig
+            {
+                DefHeartbeatInterval = 5,
+                Etcd = new DhafInternalConfigEtcd
+                {
+                    DefLeaderKeyTtl = 20,
+                }
+            };
+
+            var configParser = new ClusterConfigParser("Data/test_config_1.dhaf", extensionsScope, internalConfig);
             var parsedConfig = await configParser.Parse();
 
             Assert.NotNull(parsedConfig.Dhaf);
@@ -71,14 +80,14 @@ namespace Dhaf.Core.Tests
             Assert.NotNull(serv1);
             Assert.Equal("serv1", serv1.Name);
             Assert.Equal("site.com", serv1.Domain);
-            Assert.NotNull(serv1.NetworkConfigurations);
-            Assert.Equal(3, serv1.NetworkConfigurations.Count);
+            Assert.NotNull(serv1.EntryPoints);
+            Assert.Equal(3, serv1.EntryPoints.Count);
 
-            var serv1nc1 = serv1.NetworkConfigurations[0];
+            var serv1nc1 = serv1.EntryPoints[0];
             Assert.Equal("nc1", serv1nc1.Id);
             Assert.Equal("100.1.1.1", serv1nc1.IP);
 
-            var serv1nc2 = serv1.NetworkConfigurations[1];
+            var serv1nc2 = serv1.EntryPoints[1];
             Assert.Equal("nc2", serv1nc2.Id);
             Assert.Equal("100.1.1.2", serv1nc2.IP);
 
@@ -92,8 +101,8 @@ namespace Dhaf.Core.Tests
             Assert.NotNull(serv2);
             Assert.Equal("serv2", serv2.Name);
             Assert.Equal("foo.site.com", serv2.Domain);
-            Assert.NotNull(serv2.NetworkConfigurations);
-            Assert.Equal(2, serv2.NetworkConfigurations.Count);
+            Assert.NotNull(serv2.EntryPoints);
+            Assert.Equal(2, serv2.EntryPoints.Count);
 
             Assert.NotNull(parsedConfig.Notifiers);
             Assert.Single(parsedConfig.Notifiers);

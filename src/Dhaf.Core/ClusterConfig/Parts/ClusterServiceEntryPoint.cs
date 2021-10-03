@@ -2,7 +2,7 @@
 
 namespace Dhaf.Core
 {
-    public class ClusterServiceNetworkConfig
+    public class ClusterServiceEntryPoint
     {
         [YamlMember(Alias = "name")]
         public string Id { get; set; }

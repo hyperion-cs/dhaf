@@ -2,9 +2,9 @@
 
 namespace Dhaf.Node
 {
-    public class NetworkConfigurationStatus
+    public class EntryPointStatus
     {
-        public string NcId { get; set; }
+        public string EntryPointId { get; set; }
         public bool Healthy { get; set; }
 
         public IEnumerable<string> Reasons { get; set; }

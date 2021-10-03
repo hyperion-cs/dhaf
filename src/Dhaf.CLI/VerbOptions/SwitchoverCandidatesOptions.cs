@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace Dhaf.CLI
 {
-    [Verb("switchover-candidates", HelpText = "Show suitable network configurations for switchover.")]
+    [Verb("switchover-candidates", HelpText = "Show suitable entry points for switchover.")]
     public class SwitchoverCandidatesOptions : IConfigPath
     {
         [Option('c', "config", Required = true, HelpText = "Configuration file.")]
@@ -18,7 +18,7 @@ namespace Dhaf.CLI
         {
             get
             {
-                yield return new Example("Show suitable network configurations in service <s> for switchover using configuration file <config_file>",
+                yield return new Example("Show suitable entry points in service <s> for switchover using configuration file <config_file>",
                     new SwitchoverCandidatesOptions { Config = "<config_file>", ServiceName = "<s>" });
             }
         }

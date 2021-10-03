@@ -166,34 +166,34 @@ namespace Dhaf.Notifiers.Telegram
                  || options.Event == NotifierEvent.Switchover
                  || options.Event == NotifierEvent.Switching)
             {
-                var eventData = (NotifierEventData.CurrentNcChanged)options.EventData;
+                var eventData = (NotifierEventData.CurrentEpChanged)options.EventData;
                 var verb = options.Event.ToString().ToUpper();
 
-                var fromNc = MdEscape(eventData.FromNc);
-                var toNc = MdEscape(eventData.ToNc);
+                var fromNc = MdEscape(eventData.FromEp);
+                var toNc = MdEscape(eventData.ToEp);
 
-                message = $"There was a network configuration {verb} from *{fromNc}* "
+                message = $"There was a entry point {verb} from *{fromNc}* "
                  + $"to *{toNc}* in the service *{service}* of dhaf cluster *{dhafCluster}*\\."
                  + $"\n\nTimestamp \\(UTC\\): *{timestamp}*";
             }
 
-            if (options.Event == NotifierEvent.NcUp)
+            if (options.Event == NotifierEvent.EpUp)
             {
-                var eventData = (NotifierEventData.NcHealthChanged)options.EventData;
-                var ncName = MdEscape(eventData.NcName);
+                var eventData = (NotifierEventData.EpHealthChanged)options.EventData;
+                var entryPointName = MdEscape(eventData.EpName);
 
-                message = $"The network configuration *{ncName}* in the service *{service}* of dhaf cluster "
+                message = $"The entry point *{entryPointName}* in the service *{service}* of dhaf cluster "
                                  + $"*{dhafCluster}* is healthy \\(*UP*\\)\\."
                                  + $"\n\nTimestamp \\(UTC\\): *{timestamp}*";
             }
 
-            if (options.Event == NotifierEvent.NcDown)
+            if (options.Event == NotifierEvent.EpDown)
             {
-                var eventData = (NotifierEventData.NcHealthChanged)options.EventData;
-                var ncName = MdEscape(eventData.NcName);
+                var eventData = (NotifierEventData.EpHealthChanged)options.EventData;
+                var entryPointName = MdEscape(eventData.EpName);
                 var reasons = MdEscape(string.Join("; ", eventData.Reasons));
 
-                message = $"The network configuration *{ncName}* in the service *{service}* of dhaf cluster "
+                message = $"The entry point *{entryPointName}* in the service *{service}* of dhaf cluster "
                                  + $"*{dhafCluster}* is unhealthy \\(*DOWN*\\)\\."
                                  + $"\n\nTimestamp \\(UTC\\): *{timestamp}*"
                                  + $"\n*Reason\\(s\\)*: {reasons}";
@@ -202,9 +202,9 @@ namespace Dhaf.Notifiers.Telegram
             if (options.Event == NotifierEvent.SwitchoverPurged)
             {
                 var eventData = (NotifierEventData.SwitchoverPurged)options.EventData;
-                var switchoverNc = MdEscape(eventData.SwitchoverNc);
+                var switchoverEntryPoint = MdEscape(eventData.SwitchoverEp);
 
-                message = $"The SWITCHOVER requirement to *{switchoverNc}* has been purged "
+                message = $"The SWITCHOVER requirement to *{switchoverEntryPoint}* has been purged "
                         + $"in the service *{service}* of dhaf cluster *{dhafCluster}*\\."
                         + $"\n\nTimestamp \\(UTC\\): *{timestamp}*";
             }

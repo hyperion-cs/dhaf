@@ -12,21 +12,23 @@ namespace Dhaf.NotifierEventData
         public string Service { get; set; }
     }
 
-    public class NcHealthChanged : Base
+    // Note: "Ep" is "Entry point".
+
+    public class EpHealthChanged : Base
     {
-        public string NcName { get; set; }
+        public string EpName { get; set; }
         public IEnumerable<string> Reasons { get; set; }
     }
 
-    public class CurrentNcChanged : Base
+    public class CurrentEpChanged : Base
     {
-        public string FromNc { get; set; }
-        public string ToNc { get; set; }
+        public string FromEp { get; set; }
+        public string ToEp { get; set; }
     }
 
     public class SwitchoverPurged : Base
     {
-        public string SwitchoverNc { get; set; }
+        public string SwitchoverEp { get; set; }
     }
 
     public class DhafNewLeader : Base

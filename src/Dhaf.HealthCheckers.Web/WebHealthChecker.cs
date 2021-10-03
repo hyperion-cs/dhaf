@@ -69,10 +69,10 @@ namespace Dhaf.HealthCheckers.Web
                 ?? (_requestSchema == _internalConfig.HttpSchema
                        ? _internalConfig.DefHttpPort : _internalConfig.DefHttpsPort);
 
-            var nc = _serviceConfig.NetworkConfigurations.FirstOrDefault(x => x.Id == options.NcId);
+            var entryPoint = _serviceConfig.EntryPoints.FirstOrDefault(x => x.Id == options.EntryPointId);
 
             var path = string.IsNullOrEmpty(_config.Path) ? _internalConfig.DefPath : _config.Path;
-            var uri = new Uri($"{_requestSchema}://{nc.IP}:{port}/{path}");
+            var uri = new Uri($"{_requestSchema}://{entryPoint.IP}:{port}/{path}");
 
             DownReason? downReason = null;
             var request = new RestRequest(uri);
@@ -99,7 +99,7 @@ namespace Dhaf.HealthCheckers.Web
                 if (response.ErrorException is not null)
                 {
                     downReason = GetSslPolicyErrors(response.ErrorException).Any()
-                        ? DownReason.SslPolicyErrors : DownReason.NetworkOrFrameworkException;
+                        ? DownReason.SslPolicyErrors : DownReason.NetworkOrHttpFrameworkException;
                     continue;
                 }
 

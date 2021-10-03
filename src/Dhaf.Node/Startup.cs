@@ -45,7 +45,7 @@ namespace Dhaf.Node
             var extensionsScope = ExtensionsScopeFactory
                 .GetExtensionsScope(dhafInternalConfig.Extensions);
 
-            var clusterConfigParser = new ClusterConfigParser(_argsOptions.ConfigPath, extensionsScope);
+            var clusterConfigParser = new ClusterConfigParser(_argsOptions.ConfigPath, extensionsScope, dhafInternalConfig);
             var parsedClusterConfig = await clusterConfigParser.Parse();
 
             var etcdClient = new EtcdClient(parsedClusterConfig.Etcd.Hosts);
@@ -102,7 +102,7 @@ namespace Dhaf.Node
 
                 services.Add(new DhafService(servConf.Name,
                     servConf.Domain,
-                    servConf.NetworkConfigurations,
+                    servConf.EntryPoints,
                     switcher, healthChecker));
             });
 
