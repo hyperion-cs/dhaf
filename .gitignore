@@ -338,3 +338,6 @@ ASALocalRun/
 
 # Temp files
 /tmp/*
+
+#
+templates/dhaf_extensions/libs/*.*

@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31702.278
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.Templates.Extensions.FooSwitcher", "Dhaf.Templates.Extensions.FooSwitcher\Dhaf.Templates.Extensions.FooSwitcher.csproj", "{8387F31C-97B0-4903-B858-639358AE84A9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.Templates.Extensions.FooHealthChecker", "Dhaf.Templates.Extensions.FooHealthChecker\Dhaf.Templates.Extensions.FooHealthChecker.csproj", "{59B10033-CCA2-49CE-BCD7-1C9A32D37069}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8387F31C-97B0-4903-B858-639358AE84A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8387F31C-97B0-4903-B858-639358AE84A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8387F31C-97B0-4903-B858-639358AE84A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8387F31C-97B0-4903-B858-639358AE84A9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{59B10033-CCA2-49CE-BCD7-1C9A32D37069}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59B10033-CCA2-49CE-BCD7-1C9A32D37069}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59B10033-CCA2-49CE-BCD7-1C9A32D37069}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59B10033-CCA2-49CE-BCD7-1C9A32D37069}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {69BF9CF9-877A-4DA9-8283-9AC292E23173}
+	EndGlobalSection
+EndGlobal
