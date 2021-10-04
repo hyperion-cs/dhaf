@@ -46,8 +46,8 @@ namespace Dhaf.Switchers.Exec
                 throw new ExtensionInitFailedException(Sign);
             }
 
-            _logger.LogDebug($"{Sign} Init output: <{execResults.Output}>");
-            _logger.LogDebug($"{Sign} Init total exec time: {execResults.TotalExecuteTime} ms.");
+            _logger.LogTrace($"{Sign} Init output: <{execResults.Output}>");
+            _logger.LogTrace($"{Sign} Init total exec time: {execResults.TotalExecuteTime} ms.");
 
             // The exec switcher MUST return the ID of the current entry point
             // if it initializes successfully.

@@ -43,8 +43,8 @@ namespace Dhaf.HealthCheckers.Exec
                 throw new ExtensionInitFailedException(Sign);
             }
 
-            _logger.LogDebug($"{Sign} Init output: <{execResults.Output}>");
-            _logger.LogDebug($"{Sign} Init total exec time: {execResults.TotalExecuteTime} ms.");
+            _logger.LogTrace($"{Sign} Init output: <{execResults.Output}>");
+            _logger.LogTrace($"{Sign} Init total exec time: {execResults.TotalExecuteTime} ms.");
             _logger.LogInformation($"{Sign} Init OK.");
         }
 
