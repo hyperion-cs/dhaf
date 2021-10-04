@@ -4,13 +4,6 @@
 		<TargetFramework>net5</TargetFramework>
 		<RuntimeIdentifiers>linux-x64;osx-x64;win-x64</RuntimeIdentifiers>
 		<InvariantGlobalization>true</InvariantGlobalization>
-
-		<PackageId>Dhaf.Core</PackageId>
-		<Version>1.0.10</Version>
-		<Authors>Petr Osetrov</Authors>
-		<Company>Hyperion CS</Company>
-		<PackageTags>dhaf;core;extension,cluster;high availability;fault tolerance</PackageTags>
-		<Description>The core package for developing dhaf extensions.</Description>
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+	<metadata>
+		<id>Dhaf.Core</id>
+		<version>1.0.16</version>
+		<description>The core package for developing dhaf extensions.</description>
+		<authors>Petr Osetrov</authors>
+		<tags>dhaf core extension cluster high availability fault tolerance</tags>
+		<repository type="git" url="https://github.com/hyperion-cs/dhaf.git"/>
+		<requireLicenseAcceptance>false</requireLicenseAcceptance>
+		<license type="expression">MIT</license>
+		<copyright>Copyright © 2021 Petr Osetrov</copyright>
+		<readme>docs/Dhaf.Core.readme.md</readme>
+		<icon>images\icon.png</icon>
+	</metadata>
+  	<files>
+  		<file src="../src/Dhaf.Core/bin/Release/net5/Dhaf.Core.dll" target="lib/net5" />
+
+	    <file src="../project_identity/icon.png" target="images/" />
+	    <file src="Dhaf.Core.readme.md" target="docs/" />
+  	</files>
+</package>

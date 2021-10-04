@@ -246,6 +246,19 @@ Want to write your own provider (switcher or health checker) for **dhaf**? It's 
     
 Minimal templates (skeletons) for each provider type can be seen [here](/templates/dhaf_extensions). If you think your extension turned out wonderful, you can create a [PR](https://github.com/hyperion-cs/dhaf/pulls) to add it to the core extensions.
     
+All **dhaf** extensions have one required dependency — `Dhaf.Core`. For ease of development, this can be obtained directly from [NuGet](https://www.nuget.org/packages/Dhaf.Core/). Keep in mind, however, that this dependency should not be packed into your extension when publishing, since it is already present in `Dhaf.Node` (this is the dhaf component that uses your extensions). The same applies to the `Microsoft.Extensions.Logging.Abstractions`. So they both have to be added with the `PrivateAssets="All"` parameter to your **.csproj** extension:
+```xml
+<PackageReference Include="Dhaf.Core" Version="<VERSION_HERE>"  PrivateAssets="All"/>
+<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="<VERSION_HERE>" PrivateAssets="All" />
+```
+You can run (e.g., to manually test the extension) directly using `Dhaf.Node`. You can also set up automatic copying (for development purposes only) of your extension for `Dhaf.Node` into **.csproj**:
+```xml
+<Target Name="CopyExtension" Condition="'$(Configuration)' == 'Debug'" AfterTargets="AfterBuild">
+    <Copy SourceFiles="$(OutDir)\<YOUR_EXT_BIN_NAME>.dll;$(OutDir)\extension.json"
+          DestinationFolder="$(SolutionDir)\<PATH_TO_DHAF_NODE>\extensions\<YOUR_EXT_TYPE>\<YOUR_EXT_NAME>" />
+</Target>
+```
+    
 # Terminology
 - Failover — emergency switching of the entry point in automatic mode;
 - Switchover — knowingly manually switching entry points (for maintenance, testing, etc.);

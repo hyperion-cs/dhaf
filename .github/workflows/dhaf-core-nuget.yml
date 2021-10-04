@@ -1,0 +1,26 @@
+name: Dhaf.Core Nuget (Dev)
+
+on:
+  push:
+    tags:
+      - 'v*.*.*-core-nuget'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: setup .net
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+
+    - name: prepare nuget package
+      run: dotnet pack src/Dhaf.Core/Dhaf.Core.csproj --configuration Release -p:NuspecFile=../../nuspecs/Dhaf.Core.nuspec --output nupkgs
+  
+    - name: get the package file path
+      run: echo "PKG_FILE=$(ls nupkgs | head -n 1)" >> $GITHUB_ENV
+
+    - name: push package
+      run: dotnet nuget push "nupkgs/${{ env.PKG_FILE }}" --api-key "${{ secrets.NUGET_TOKEN }}" --source https://api.nuget.org/v3/index.json
