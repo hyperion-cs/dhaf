@@ -929,7 +929,6 @@ namespace Dhaf.Node
 
                     await PushToNotifiers(new NotifierPushOptions
                     {
-                        ServiceName = service.Name,
                         Level = curr.Healthy ? NotifierLevel.Info : NotifierLevel.Warning,
                         Event = curr.Healthy ? NotifierEvent.EpUp : NotifierEvent.EpDown,
                         EventData = eventData

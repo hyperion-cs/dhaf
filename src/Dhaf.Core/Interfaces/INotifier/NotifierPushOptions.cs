@@ -2,8 +2,6 @@
 {
     public class NotifierPushOptions
     {
-        public string ServiceName { get; set; }
-
         public NotifierLevel Level { get; set; }
 
         public NotifierEvent Event { get; set; }
