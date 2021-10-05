@@ -6,7 +6,7 @@
 
 Distributed high availability failover, written in cross-platform C# [.NET](https://github.com/dotnet) (Linux, Windows and macOS supported).
 
-You can [join](https://t.me/joinchat/Zl4GO7pcBxw3NTIy) a Telegram chat to discuss **dhaf**.
+You can [join](https://t.me/dhaf_chat) a Telegram chat to discuss **dhaf**.
 
 # Why is it useful? 🚀
 Dhaf is a system that keeps your web service **always online** for the end user. It's available to everyone for free and without the need for special knowledge or complicated network infrastructure.
