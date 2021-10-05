@@ -1,7 +1,6 @@
 ﻿{
   "entryPoint": "Dhaf.Notifiers.Telegram.dll",
   "internalConfiguration": {
-    "defName": "tg-anon",
     "updatesPollingInterval": 2,
     "storageSubscribersPath": "subs"
   }

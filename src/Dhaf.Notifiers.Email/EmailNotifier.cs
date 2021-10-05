@@ -36,7 +36,7 @@ namespace Dhaf.Notifiers.Email
             _config = (Config)options.Config;
             _internalConfig = (InternalConfig)options.InternalConfig;
 
-            Sign = $"[{ExtensionName} ntf/{_config.Name ?? _internalConfig.DefName}]";
+            Sign = $"[{ExtensionName} ntf/{_config.Name}]";
 
             await AssertConfiguration();
 
@@ -222,7 +222,7 @@ namespace Dhaf.Notifiers.Email
                 messageData.Body = defBody;
             }
 
-            messageData.Body += $"<br><i>* Notifier name: {_config.Name ?? _internalConfig.DefName}</i>";
+            messageData.Body += $"<br><i>* Notifier name: {_config.Name}</i>";
             return messageData;
         }
 

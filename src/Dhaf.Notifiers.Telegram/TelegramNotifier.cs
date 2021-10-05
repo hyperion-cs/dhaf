@@ -49,7 +49,7 @@ namespace Dhaf.Notifiers.Telegram
             _internalConfig = (InternalConfig)options.InternalConfig;
             _storage = options.Storage;
 
-            Sign = $"[{ExtensionName} ntf/{_config.Name ?? _internalConfig.DefName}]";
+            Sign = $"[{ExtensionName} ntf/{_config.Name}]";
 
             if (_config.JoinCode is null)
             {
@@ -234,7 +234,7 @@ namespace Dhaf.Notifiers.Telegram
 
             message = $"*{options.Level.ToString().ToUpper()}*:\n"
                 + message
-                + $"\n\n_\\* Notifier name: {MdEscape(_config.Name ?? _internalConfig.DefName)}_";
+                + $"\n\n_\\* Notifier name: {MdEscape(_config.Name)}_";
 
             return message;
         }
