@@ -228,10 +228,11 @@ Telegram messenger notifier provider (`tg`):
 Telegram bot prerequisites:
 - All you have to do is create a bot via @BotFather (more details [here](https://core.telegram.org/bots#3-how-do-i-create-a-bot)) and write the API key in the config. Everything else is taken care of by the `tg` provider (in other words, the `tg` provider acts as a server for the bot). It does NOT require incoming connections because it uses [long polling](https://en.wikipedia.org/wiki/Push_technology#Long_polling);
 - It is worth turning on [privacy mode](https://core.telegram.org/bots#privacy-mode) in the settings of the bot.
-
     
 # Building from sources
-You can look up [our github actions](/.github/workflows) for the required platform and perform the necessary steps yourself, or you can download the [GitHub Actions Runner](https://github.com/actions/runner) (self-hosted) and run one of the required workflows.    
+On UNIX-like systems, you can use [this .sh template](/templates/build_example.sh) to build (with this template you can build for any platform). However, please note that you will need the [.NET 5 SDK](https://dotnet.microsoft.com/download/dotnet/5.0) installed.
+    
+Looking at the above template, it is not difficult to perform a building from sources on platforms such as Windows and/or macOS also.
     
 # Dhaf as a service, automatically started at OS startup
 This is done e.g. via [Systemd](https://en.wikipedia.org/wiki/Systemd) on Linux. For Windows you can use [Windows service](https://en.wikipedia.org/wiki/Windows_service).
