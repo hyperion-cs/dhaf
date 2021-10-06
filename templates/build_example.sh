@@ -1,18 +1,17 @@
-# Runtime Identifier: win-x64, linux-x64, osx-x64 (see https://docs.microsoft.com/en-us/dotnet/core/rid-catalog for details)
+# runtime identifier: win-x64, linux-x64, osx-x64 (see https://docs.microsoft.com/en-us/dotnet/core/rid-catalog for details)
 RID=<REQUIRED_RID> 
 DOTNET_CLI_TELEMETRY_OPTOUT=1
 
+# clone .git repo
 git clone https://github.com/hyperion-cs/dhaf.git
 cd dhaf
 
+# restore dependencies
 dotnet restore src/Dhaf.sln
 
 # build dhaf core, node, cli
-
 dotnet publish src/Dhaf.Core/Dhaf.Core.csproj  --configuration Release --no-restore -nowarn:CS1998 -r "$RID" -o "bin/$RID/core" /p:DebugType=None /p:DebugSymbols=false
-
 dotnet publish src/Dhaf.Node/Dhaf.Node.csproj --configuration Release --no-dependencies --no-restore -nowarn:CS1998 -r "$RID" -o "bin/$RID" -p:PublishSingleFile=true --self-contained false /p:DebugType=None /p:DebugSymbols=false
-
 dotnet publish src/Dhaf.CLI/Dhaf.CLI.csproj --configuration Release --no-dependencies --no-restore -nowarn:CS1998 -r "$RID" -o "bin/$RID" -p:PublishSingleFile=true --self-contained false /p:DebugType=None /p:DebugSymbols=false
 
 # build core extensions
@@ -25,6 +24,8 @@ dotnet publish src/Dhaf.Switchers.Exec/Dhaf.Switchers.Exec.csproj --configuratio
 
 dotnet publish src/Dhaf.Notifiers.Email/Dhaf.Notifiers.Email.csproj --configuration Release --no-restore -nowarn:CS1998 -r "$RID" -o "bin/$RID/ext/ntf/email" /p:DebugType=None /p:DebugSymbols=false
 dotnet publish src/Dhaf.Notifiers.Telegram/Dhaf.Notifiers.Telegram.csproj --configuration Release --no-restore -nowarn:CS1998 -r "$RID" -o "bin/$RID/ext/ntf/tg" /p:DebugType=None /p:DebugSymbols=false
+
+# "$RID-artifacts" — the build destination folder.
 
 mkdir -p $RID-artifacts
 mkdir -p $RID-artifacts/libs
