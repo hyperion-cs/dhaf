@@ -161,6 +161,8 @@ Need another extension? Leave a [feature request](https://github.com/hyperion-cs
 | `dhaf.web-api` | string | REST API configuration for the dhaf node. | — |
 | `dhaf.web-api.host` | string | REST API Host. | `localhost` |
 | `dhaf.web-api.port` | int | Rest API Port | `8128` |
+| `etcd.username` | string | Etcd authentication username. | — |
+| `etcd.password` | string | Etcd authentication password. | — |
 
 ### Configurations for switchers providers
     

@@ -31,6 +31,7 @@ namespace Dhaf.Node
     public class DhafNode : IDhafNode
     {
         private readonly EtcdClient _etcdClient;
+        private readonly Grpc.Core.Metadata _etcdHeaders;
         private readonly DhafNodeBackgroundTasks _backgroundTasks;
         private readonly IEnumerable<INotifier> _notifiers;
         private readonly ILogger<IDhafNode> _logger;
@@ -62,6 +63,7 @@ namespace Dhaf.Node
             IEnumerable<DhafService> services,
             IEnumerable<INotifier> notifiers,
             EtcdClient etcdClient,
+            Grpc.Core.Metadata etcdHeaders,
             ILogger<IDhafNode> logger)
         {
             _clusterConfig = clusterConfig;
@@ -70,9 +72,10 @@ namespace Dhaf.Node
             _services = services;
             _notifiers = notifiers;
 
-            _logger = logger;
-
             _etcdClient = etcdClient;
+            _etcdHeaders = etcdHeaders;
+
+            _logger = logger;
             _backgroundTasks = new DhafNodeBackgroundTasks();
         }
 
@@ -146,8 +149,8 @@ namespace Dhaf.Node
             var serviceStatusPrefix = _etcdClusterRoot
                 + _dhafInternalConfig.Etcd.HealthPath;
 
-            await _etcdClient.DeleteAsync(nodeStatusPrefix + node.Name);
-            await _etcdClient.DeleteRangeAsync(serviceStatusPrefix + node.Name);
+            await _etcdClient.DeleteAsync(nodeStatusPrefix + node.Name, _etcdHeaders);
+            await _etcdClient.DeleteRangeAsync(serviceStatusPrefix + node.Name, _etcdHeaders);
         }
 
         public async Task Switchover(string serviceName, string entryPointId)
@@ -181,7 +184,7 @@ namespace Dhaf.Node
             };
 
             var value = JsonSerializer.Serialize(entity, DhafInternalConfig.JsonSerializerOptions);
-            await _etcdClient.PutAsync(key, value);
+            await _etcdClient.PutAsync(key, value, _etcdHeaders);
         }
 
         public async Task PurgeSwitchover(string serviceName)
@@ -195,7 +198,7 @@ namespace Dhaf.Node
             var key = _etcdClusterRoot
                 + _dhafInternalConfig.Etcd.SwitchoverPath + service.Name;
 
-            await _etcdClient.DeleteAsync(key);
+            await _etcdClient.DeleteAsync(key, _etcdHeaders);
         }
 
         public async Task<IEnumerable<SwitchoverCandidate>> GetSwitchoverCandidates(string serviceName)
@@ -486,7 +489,7 @@ namespace Dhaf.Node
         /// <returns>The name of the leader node or null if the cluster leader does not exist.</returns>
         protected async Task<string> GetLeaderOrDefault()
         {
-            var leader = await _etcdClient.GetValAsync(_etcdClusterRoot + _dhafInternalConfig.Etcd.LeaderPath);
+            var leader = await _etcdClient.GetValAsync(_etcdClusterRoot + _dhafInternalConfig.Etcd.LeaderPath, _etcdHeaders);
 
             if (string.IsNullOrEmpty(leader))
             {
@@ -553,7 +556,7 @@ namespace Dhaf.Node
                 RequestDeleteRange = new DeleteRangeRequest { Key = leaderPath }
             });
 
-            var txnResponse = await _etcdClient.TransactionAsync(txnRequest);
+            var txnResponse = await _etcdClient.TransactionAsync(txnRequest, _etcdHeaders);
 
             if (txnResponse.Succeeded)
             {
@@ -575,7 +578,7 @@ namespace Dhaf.Node
                 new LeaseGrantRequest
                 {
                     TTL = _clusterConfig.Etcd.LeaderKeyTtl ?? _dhafInternalConfig.Etcd.DefLeaderKeyTtl
-                });
+                }, _etcdHeaders);
 
             var putRequest = new PutRequest
             {
@@ -598,7 +601,7 @@ namespace Dhaf.Node
                 RequestPut = putRequest,
             });
 
-            var txnResponse = await _etcdClient.TransactionAsync(txnRequest);
+            var txnResponse = await _etcdClient.TransactionAsync(txnRequest, _etcdHeaders);
 
             if (txnResponse.Succeeded)
             {
@@ -611,7 +614,7 @@ namespace Dhaf.Node
             }
             else
             {
-                await _etcdClient.LeaseRevokeAsync(new LeaseRevokeRequest { ID = lease.ID });
+                await _etcdClient.LeaseRevokeAsync(new LeaseRevokeRequest { ID = lease.ID }, _etcdHeaders);
                 var leader = await GetLeaderOrDefault();
 
                 return new PromotionStatus { Success = false, Leader = leader };
@@ -637,7 +640,7 @@ namespace Dhaf.Node
                 await _etcdClient.LeaseKeepAlive(new LeaseKeepAliveRequest
                 {
                     ID = _leaderLeaseId.Value
-                }, (lkaResp) => { }, CancellationToken.None);
+                }, (lkaResp) => { }, CancellationToken.None, _etcdHeaders);
 
                 _logger.LogTrace($"The leader key with lease ID {_leaderLeaseId.Value} is kept alive.");
             }
@@ -651,7 +654,7 @@ namespace Dhaf.Node
             var nodeStatus = new DhafNodeStatusRaw { LastHeartbeatTimestamp = heartbeatTimestamp };
             var content = JsonSerializer.Serialize(nodeStatus, DhafInternalConfig.JsonSerializerOptions);
 
-            await _etcdClient.PutAsync(key, content);
+            await _etcdClient.PutAsync(key, content, _etcdHeaders);
             _logger.LogTrace("Heartbeat *knock-knock*.");
         }
 
@@ -690,7 +693,7 @@ namespace Dhaf.Node
 
             var value = JsonSerializer.Serialize(serviceHealth, DhafInternalConfig.JsonSerializerOptions);
 
-            await _etcdClient.PutAsync(key, value);
+            await _etcdClient.PutAsync(key, value, _etcdHeaders);
 
             if (status.Healthy)
             {
@@ -723,7 +726,7 @@ namespace Dhaf.Node
                     + _dhafInternalConfig.Etcd.HealthPath
                     + $"{service.Name}/{node}/";
 
-                var items = await _etcdClient.GetRangeValAsync(keyPrefix);
+                var items = await _etcdClient.GetRangeValAsync(keyPrefix, _etcdHeaders);
 
                 foreach (var item in items)
                 {
@@ -732,7 +735,7 @@ namespace Dhaf.Node
                     if (service.EntryPoints.FirstOrDefault(x => x.Id == hostId) is null)
                     {
                         // There seems to be some trash left over from old entry points.
-                        await _etcdClient.DeleteAsync(item.Key);
+                        await _etcdClient.DeleteAsync(item.Key, _etcdHeaders);
                         continue;
                     }
 
@@ -788,7 +791,7 @@ namespace Dhaf.Node
             var keyPrefix = _etcdClusterRoot
                 + _dhafInternalConfig.Etcd.NodesPath;
 
-            var values = await _etcdClient.GetRangeValAsync(keyPrefix);
+            var values = await _etcdClient.GetRangeValAsync(keyPrefix, _etcdHeaders);
             var entities = values.ToDictionary(k => Path.GetFileName(k.Key),
                 v => JsonSerializer.Deserialize<DhafNodeStatusRaw>(v.Value, DhafInternalConfig.JsonSerializerOptions));
 
@@ -873,7 +876,7 @@ namespace Dhaf.Node
             var key = _etcdClusterRoot
                 + _dhafInternalConfig.Etcd.SwitchoverPath + service.Name;
 
-            var rawValue = await _etcdClient.GetValAsync(key);
+            var rawValue = await _etcdClient.GetValAsync(key, _etcdHeaders);
 
             if (!string.IsNullOrEmpty(rawValue))
             {
@@ -979,7 +982,7 @@ namespace Dhaf.Node
             var key = _etcdClusterRoot
                 + _dhafInternalConfig.Etcd.SwitchoverPath + service.Name;
 
-            var rawValue = await _etcdClient.GetValAsync(key);
+            var rawValue = await _etcdClient.GetValAsync(key, _etcdHeaders);
 
             if (string.IsNullOrEmpty(rawValue))
             {

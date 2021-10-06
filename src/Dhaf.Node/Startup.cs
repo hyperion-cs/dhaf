@@ -49,7 +49,23 @@ namespace Dhaf.Node
             var parsedClusterConfig = await clusterConfigParser.Parse();
 
             var etcdClient = new EtcdClient(parsedClusterConfig.Etcd.Hosts);
+            Grpc.Core.Metadata etcdHeaders = null;
 
+            // Config parser's checks guarantees the presence of both auth fields if at least one is present.
+            var isAuthRequired = !string.IsNullOrEmpty(parsedClusterConfig.Etcd.Username);
+            if (isAuthRequired)
+            {
+                var authRes = etcdClient.Authenticate(new Etcdserverpb.AuthenticateRequest()
+                {
+                    Name = parsedClusterConfig.Etcd.Username,
+                    Password = parsedClusterConfig.Etcd.Password
+                });
+
+                etcdHeaders = new Grpc.Core.Metadata()
+                {
+                    new Grpc.Core.Metadata.Entry("token", authRes.Token)
+                };
+            }
 
             _dhafNodeLogger.LogInformation($"I am <{parsedClusterConfig.Dhaf.NodeName}> in the <{parsedClusterConfig.Dhaf.ClusterName}> cluster.");
 
@@ -83,7 +99,7 @@ namespace Dhaf.Node
                     Config = servConf.HealthChecker,
                     ClusterServiceConfig = servConf,
                     InternalConfig = hcInternalConfig,
-                    Storage = new ExtensionStorageProvider(etcdClient, parsedClusterConfig, dhafInternalConfig,
+                    Storage = new ExtensionStorageProvider(etcdClient, etcdHeaders, parsedClusterConfig, dhafInternalConfig,
                         dhafInternalConfig.Etcd.ExtensionStorageHcPrefix + servConf.HealthChecker.ExtensionName)
                 };
 
@@ -93,7 +109,7 @@ namespace Dhaf.Node
                     Config = servConf.Switcher,
                     ClusterServiceConfig = servConf,
                     InternalConfig = swInternalConfig,
-                    Storage = new ExtensionStorageProvider(etcdClient, parsedClusterConfig, dhafInternalConfig,
+                    Storage = new ExtensionStorageProvider(etcdClient, etcdHeaders, parsedClusterConfig, dhafInternalConfig,
                         dhafInternalConfig.Etcd.ExtensionStorageSwPrefix + servConf.Switcher.ExtensionName)
                 };
 
@@ -126,7 +142,7 @@ namespace Dhaf.Node
                     Logger = ntfLogger,
                     Config = notifierConfig,
                     InternalConfig = ntfInternalConfig,
-                    Storage = new ExtensionStorageProvider(etcdClient, parsedClusterConfig, dhafInternalConfig,
+                    Storage = new ExtensionStorageProvider(etcdClient, etcdHeaders, parsedClusterConfig, dhafInternalConfig,
                         dhafInternalConfig.Etcd.ExtensionStorageNtfPrefix
                             + notifierConfig.ExtensionName + $"/{notifierConfig.Name}")
                 };
@@ -136,7 +152,7 @@ namespace Dhaf.Node
             }
 
             IDhafNode dhafNode = new DhafNode(parsedClusterConfig, dhafInternalConfig,
-                services, notifiers, etcdClient, _dhafNodeLogger);
+                services, notifiers, etcdClient, etcdHeaders, _dhafNodeLogger);
 
             _dhafNodeLogger.LogTrace("[rest api] Init process...");
 

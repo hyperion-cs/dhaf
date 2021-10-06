@@ -227,6 +227,12 @@ namespace Dhaf.Core
             {
                 throw new ConfigParsingException(1412, $"The TTL of the leader key in the ETCD must be greater than the heartbeat interval of the Dhaf node.");
             }
+
+            if ((!string.IsNullOrEmpty(config.Etcd.Username) && string.IsNullOrEmpty(config.Etcd.Password))
+                || (string.IsNullOrEmpty(config.Etcd.Username) && !string.IsNullOrEmpty(config.Etcd.Password)))
+            {
+                throw new ConfigParsingException(1413, $"Etcd credentials (username, password) must BOTH be either missing or present.");
+            }
         }
 
         public async Task<T> ParseExtensionInternal<T>(string path, Type internalConfigType)
