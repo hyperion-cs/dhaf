@@ -242,7 +242,7 @@ The templates can be found in the `templates` folder of the current repository.
 - If you have a desire and/or need to load balance, that is not what dhaf is for. Its purpose is to provide a working entry point into a web service, and it is by no means a (reverse) proxy server. So, if there is a need for the above, then the entry points in the dhaf configuration should be servers with e.g. [HAProxy](https://en.wikipedia.org/wiki/HAProxy) (or its equivalent), whose functionality is designed to do just that.
 
 # How to write your own dhaf provider in .NET
-Want to write your own provider (switcher or health checker) for **dhaf**? It's very easy to do.
+Want to write your own provider (switcher or health checker) for **dhaf**? It's very easy to do. Out of the box in the dhaf core, such things as logging, distributed storage access (extension area only), configurations (internal and for users) and so on are available for extension development.
     
 Minimal templates (skeletons) for each provider type can be seen [here](/templates/dhaf_extensions). If you think your extension turned out wonderful, you can create a [PR](https://github.com/hyperion-cs/dhaf/pulls) to add it to the core extensions.
     
