@@ -23,7 +23,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.Notifiers.Telegram", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.Core.Tests", "..\tests\Dhaf.Core.Tests\Dhaf.Core.Tests.csproj", "{B24910B3-1629-4C77-81B6-CED348589E29}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dhaf.Node.DataTransferObjects", "Dhaf.Node.DataTransferObjects\Dhaf.Node.DataTransferObjects.csproj", "{7BCA415F-B775-428C-8903-26FCDC1AFCB3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dhaf.Node.DataTransferObjects", "Dhaf.Node.DataTransferObjects\Dhaf.Node.DataTransferObjects.csproj", "{7BCA415F-B775-428C-8903-26FCDC1AFCB3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dhaf.Switchers.GoogleCloud", "Dhaf.Switchers.GoogleCloud\Dhaf.Switchers.GoogleCloud.csproj", "{B90E1B46-8259-4B93-85FB-D7C50F09E582}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -75,6 +77,10 @@ Global
 		{7BCA415F-B775-428C-8903-26FCDC1AFCB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7BCA415F-B775-428C-8903-26FCDC1AFCB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7BCA415F-B775-428C-8903-26FCDC1AFCB3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B90E1B46-8259-4B93-85FB-D7C50F09E582}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B90E1B46-8259-4B93-85FB-D7C50F09E582}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B90E1B46-8259-4B93-85FB-D7C50F09E582}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B90E1B46-8259-4B93-85FB-D7C50F09E582}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
