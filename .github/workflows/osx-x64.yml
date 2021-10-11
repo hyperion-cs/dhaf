@@ -36,6 +36,7 @@ jobs:
         dotnet publish src/Dhaf.HealthCheckers.Exec/Dhaf.HealthCheckers.Exec.csproj --configuration Release --no-restore -nowarn:CS1998 -r osx-x64 -o bin/osx-x64/ext/hc/exec /p:DebugType=None /p:DebugSymbols=false
         
         dotnet publish src/Dhaf.Switchers.Cloudflare/Dhaf.Switchers.Cloudflare.csproj --configuration Release --no-restore -nowarn:CS1998 -r osx-x64 -o bin/osx-x64/ext/sw/cloudflare /p:DebugType=None /p:DebugSymbols=false
+        dotnet publish src/Dhaf.Switchers.GoogleCloud/Dhaf.Switchers.GoogleCloud.csproj --configuration Release --no-restore -nowarn:CS1998 -r osx-x64 -o bin/osx-x64/ext/sw/google-cloud /p:DebugType=None /p:DebugSymbols=false
         dotnet publish src/Dhaf.Switchers.Exec/Dhaf.Switchers.Exec.csproj --configuration Release --no-restore -nowarn:CS1998 -r osx-x64 -o bin/osx-x64/ext/sw/exec /p:DebugType=None /p:DebugSymbols=false
         
         dotnet publish src/Dhaf.Notifiers.Email/Dhaf.Notifiers.Email.csproj --configuration Release --no-restore -nowarn:CS1998 -r osx-x64 -o bin/osx-x64/ext/ntf/email /p:DebugType=None /p:DebugSymbols=false
@@ -48,6 +49,7 @@ jobs:
         mkdir -p osx-x64-artifacts/extensions/health-checkers/web
         mkdir -p osx-x64-artifacts/extensions/health-checkers/exec
         mkdir -p osx-x64-artifacts/extensions/switchers/cloudflare
+        mkdir -p osx-x64-artifacts/extensions/switchers/google-cloud
         mkdir -p osx-x64-artifacts/extensions/switchers/exec
         mkdir -p osx-x64-artifacts/extensions/notifiers/email
         mkdir -p osx-x64-artifacts/extensions/notifiers/tg
@@ -60,6 +62,7 @@ jobs:
         mv ./bin/osx-x64/ext/hc/web/* osx-x64-artifacts/extensions/health-checkers/web
         mv ./bin/osx-x64/ext/hc/exec/* osx-x64-artifacts/extensions/health-checkers/exec
         mv ./bin/osx-x64/ext/sw/cloudflare/* osx-x64-artifacts/extensions/switchers/cloudflare
+        mv ./bin/osx-x64/ext/sw/google-cloud/* osx-x64-artifacts/extensions/switchers/google-cloud
         mv ./bin/osx-x64/ext/sw/exec/* osx-x64-artifacts/extensions/switchers/exec
         mv ./bin/osx-x64/ext/ntf/email/* osx-x64-artifacts/extensions/notifiers/email
         mv ./bin/osx-x64/ext/ntf/tg/* osx-x64-artifacts/extensions/notifiers/tg

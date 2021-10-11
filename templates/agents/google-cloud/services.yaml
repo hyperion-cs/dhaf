@@ -1,0 +1,3 @@
+- name: serv1
+  gcmd_key: dhaf_serv1_ip
+  nginx_subconfig_path: /etc/nginx/dhaf/dhaf_serv1_ip
