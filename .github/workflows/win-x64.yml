@@ -36,6 +36,7 @@ jobs:
         dotnet publish src/Dhaf.HealthCheckers.Exec/Dhaf.HealthCheckers.Exec.csproj --configuration Release --no-restore -nowarn:CS1998 -r win-x64 -o bin/win-x64/ext/hc/exec /p:DebugType=None /p:DebugSymbols=false
         
         dotnet publish src/Dhaf.Switchers.Cloudflare/Dhaf.Switchers.Cloudflare.csproj --configuration Release --no-restore -nowarn:CS1998 -r win-x64 -o bin/win-x64/ext/sw/cloudflare /p:DebugType=None /p:DebugSymbols=false
+        dotnet publish src/Dhaf.Switchers.GoogleCloud/Dhaf.Switchers.GoogleCloud.csproj --configuration Release --no-restore -nowarn:CS1998 -r win-x64 -o bin/win-x64/ext/sw/google-cloud /p:DebugType=None /p:DebugSymbols=false
         dotnet publish src/Dhaf.Switchers.Exec/Dhaf.Switchers.Exec.csproj --configuration Release --no-restore -nowarn:CS1998 -r win-x64 -o bin/win-x64/ext/sw/exec /p:DebugType=None /p:DebugSymbols=false
         
         dotnet publish src/Dhaf.Notifiers.Email/Dhaf.Notifiers.Email.csproj --configuration Release --no-restore -nowarn:CS1998 -r win-x64 -o bin/win-x64/ext/ntf/email /p:DebugType=None /p:DebugSymbols=false
@@ -48,6 +49,7 @@ jobs:
         mkdir -p win-x64-artifacts/extensions/health-checkers/web
         mkdir -p win-x64-artifacts/extensions/health-checkers/exec
         mkdir -p win-x64-artifacts/extensions/switchers/cloudflare
+        mkdir -p win-x64-artifacts/extensions/switchers/google-cloud
         mkdir -p win-x64-artifacts/extensions/switchers/exec
         mkdir -p win-x64-artifacts/extensions/notifiers/email
         mkdir -p win-x64-artifacts/extensions/notifiers/tg
@@ -60,6 +62,7 @@ jobs:
         mv ./bin/win-x64/ext/hc/web/* win-x64-artifacts/extensions/health-checkers/web
         mv ./bin/win-x64/ext/hc/exec/* win-x64-artifacts/extensions/health-checkers/exec
         mv ./bin/win-x64/ext/sw/cloudflare/* win-x64-artifacts/extensions/switchers/cloudflare
+        mv ./bin/win-x64/ext/sw/google-cloud/* win-x64-artifacts/extensions/switchers/google-cloud
         mv ./bin/win-x64/ext/sw/exec/* win-x64-artifacts/extensions/switchers/exec
         mv ./bin/win-x64/ext/ntf/email/* win-x64-artifacts/extensions/notifiers/email
         mv ./bin/win-x64/ext/ntf/tg/* win-x64-artifacts/extensions/notifiers/tg
