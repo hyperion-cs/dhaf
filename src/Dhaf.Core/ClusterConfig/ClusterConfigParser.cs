@@ -133,12 +133,13 @@ namespace Dhaf.Core
 
         public async Task ConfigCommonCheck(ClusterConfig config)
         {
-            var nameRegex = new Regex(@"^[a-zA-Z0-9\-_]{1,}$");
+            var nameRegex = new Regex($"^[a-zA-Z0-9\\-_]{{1,{InternalConfig.NameMaxLength}}}$");
 
-            static string incorrectNameErr(string prop, string currVal) => $"Incorrect value for \"{prop}\" in dhaf config. " +
-                $"The name is required and must contain only letters of the " +
-                $"Latin alphabet and hyphen \"-\" / underscore \"_\" characters. " +
-                $"Current value: \"{currVal ?? "<none>"}\".";
+            string incorrectNameErr(string prop, string currVal) => $"Incorrect value for \"{prop}\" in dhaf config. " +
+               $"The name is required and must contain only letters of the " +
+               $"Latin alphabet and hyphen \"-\" / underscore \"_\" characters. " +
+               $"The maximum length of the name is {InternalConfig.NameMaxLength} character(s). " +
+               $"Current value: \"{currVal ?? "<none>"}\".";
 
             if (!nameRegex.IsMatch(config.Dhaf.NodeName ?? string.Empty))
             {
