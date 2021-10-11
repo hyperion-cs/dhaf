@@ -234,6 +234,18 @@ namespace Dhaf.Core
             {
                 throw new ConfigParsingException(1413, $"Etcd credentials (username, password) must BOTH be either missing or present.");
             }
+
+            var tactInterval = config.Dhaf.TactInterval ?? InternalConfig.DefTactInterval;
+            if (InternalConfig.TactIntervalMin > tactInterval || tactInterval > InternalConfig.TactIntervalMax)
+            {
+                throw new ConfigParsingException(1414, $"Tact interval must be in the range {InternalConfig.TactIntervalMin}-{InternalConfig.TactIntervalMax} seconds.");
+            }
+
+            var tactPostSwitchDelay = config.Dhaf.TactPostSwitchDelay ?? InternalConfig.DefTactPostSwitchDelay;
+            if (InternalConfig.TactPostSwitchDelayMin > tactPostSwitchDelay || tactPostSwitchDelay > InternalConfig.TactPostSwitchDelayMax)
+            {
+                throw new ConfigParsingException(1415, $"Tact post switch delay must be in the range {InternalConfig.TactPostSwitchDelayMin}-{InternalConfig.TactPostSwitchDelayMax} seconds.");
+            }
         }
 
         public async Task<T> ParseExtensionInternal<T>(string path, Type internalConfigType)

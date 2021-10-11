@@ -8,6 +8,7 @@
         public int? HealthyNodeStatusTtl { get; set; }
         public int? HeartbeatInterval { get; set; }
         public int? TactInterval { get; set; }
+        public int? TactPostSwitchDelay { get; set; }
 
         public ClusterDhafWebApiConfig WebApi { get; set; } = new();
     }

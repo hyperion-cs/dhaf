@@ -350,6 +350,7 @@ namespace Dhaf.Node
 
             service.CurrentEntryPointId = await service.Switcher.GetCurrentEntryPointId();
 
+            var switched = false;
             var autoSwitchRequirement = await IsAutoSwitchOfEntryPointRequired(service);
             var switchoverRequirement = await IsSwitchoverOfEntryPointRequired(service);
 
@@ -402,6 +403,8 @@ namespace Dhaf.Node
                     Failover = autoSwitchRequirement.Failover
                 });
 
+                switched = true;
+
                 var eventData = await GetBaseEventData<NotifierEventData.CurrentEpChanged>(service.Name);
                 eventData.FromEp = service.CurrentEntryPointId;
                 eventData.ToEp = autoSwitchRequirement.SwitchTo;
@@ -426,6 +429,8 @@ namespace Dhaf.Node
                         EntryPointId = switchoverRequirement.SwitchTo,
                         Failover = switchoverRequirement.Failover
                     });
+
+                    switched = true;
 
                     var eventData = await GetBaseEventData<NotifierEventData.CurrentEpChanged>(service.Name);
                     eventData.FromEp = service.CurrentEntryPointId;
@@ -457,6 +462,8 @@ namespace Dhaf.Node
                     Failover = autoSwitchRequirement.Failover
                 });
 
+                switched = true;
+
                 var eventData = await GetBaseEventData<NotifierEventData.CurrentEpChanged>(service.Name);
                 eventData.FromEp = service.CurrentEntryPointId;
                 eventData.ToEp = autoSwitchRequirement.SwitchTo;
@@ -467,6 +474,11 @@ namespace Dhaf.Node
                     Event = NotifierEvent.Switching,
                     EventData = eventData
                 });
+            }
+
+            if (switched)
+            {
+                await Task.Delay(_clusterConfig.Dhaf.TactPostSwitchDelay ?? _dhafInternalConfig.DefTactPostSwitchDelay);
             }
 
             await NotifyChangesInNcHealth(service);

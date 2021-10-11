@@ -10,7 +10,15 @@ namespace Dhaf.Core
         public DhafInternalConfigWebApi WebApi { get; set; }
 
         public int DefHeartbeatInterval { get; set; }
+
         public int DefTactInterval { get; set; }
+        public int TactIntervalMin { get; set; }
+        public int TactIntervalMax { get; set; }
+
+        public int DefTactPostSwitchDelay { get; set; }
+        public int TactPostSwitchDelayMin { get; set; }
+        public int TactPostSwitchDelayMax { get; set; }
+
         public int DefHealthyNodeStatusTtl { get; set; }
 
         public List<string> Extensions { get; set; }
