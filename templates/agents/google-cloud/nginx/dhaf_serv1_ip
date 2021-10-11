@@ -1,0 +1,4 @@
+# If necessary, it will be overridden automatically via agent.
+# Typically, this file is located in /etc/nginx/dhaf/dhaf_serv1_ip
+
+set $dhaf_ip "100.10.10.10";

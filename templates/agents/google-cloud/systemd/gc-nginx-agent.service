@@ -1,0 +1,11 @@
+Description=Google Cloud nginx agent
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/dhaf/
+ExecStart=/usr/bin/python3 /opt/dhaf/gc-nginx-agent.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
