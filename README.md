@@ -142,15 +142,15 @@ Need another extension? Leave a [feature request](https://github.com/hyperion-cs
 | `dhaf.node-name` | string | The name of the current dhaf cluster node. Only the characters `a-zA-Z0-9`, `-` (hyphen) and `_` are allowed. |
 | `etcd.hosts` | string | Etcd hosts in the format `ip1:port1,ip2:port2,...,ipN:portN`. |
 | `services` | list | The list of services that dhaf will keep available. |
-| `services.name` | string | The name of the service. Only the characters `a-zA-Z0-9`, `-` (hyphen) and `_` are allowed. |
-| `services.domain` | string | Domain name for service <name>. For example, `site.com`. |
-| `services.entry-points` | object | List of entry points for service <name> in **order** of priority. |
-| `services.entry-points.name` | string | The name of the entry point. Only the characters `a-zA-Z0-9`, `-` (hyphen) and `_` are allowed. |
-| `services.entry-points.ip` | string | The IP address of the entry point <name>. |
-| `services.switcher` | object | Switcher for service <name>. |
-| `services.switcher.type` | object | Name (provider type) of switcher for service <name>. |
-| `services.health-checker` | object | Health checker for service <name>. |
-| `services.health-checker.type` | object | Name (provider type) of health checker for service <name>. |
+| `services[].name` | string | The name of the service. Only the characters `a-zA-Z0-9`, `-` (hyphen) and `_` are allowed. |
+| `services[].domain` | string | Domain name for service <name>. For example, `site.com`. |
+| `services[].entry-points` | list | List of entry points for service <name> in **order** of priority. |
+| `services[].entry-points[].name` | string | The name of the entry point. Only the characters `a-zA-Z0-9`, `-` (hyphen) and `_` are allowed. |
+| `services[].entry-points[].ip` | string | The IP address of the entry point <name>. |
+| `services[].switcher` | object | Switcher for service <name>. |
+| `services[].switcher.type` | object | Name (provider type) of switcher for service <name>. |
+| `services[].health-checker` | object | Health checker for service <name>. |
+| `services[].health-checker.type` | object | Name (provider type) of health checker for service <name>. |
    
 ### Optional
 |Parameter name|Type|Description|Default|
