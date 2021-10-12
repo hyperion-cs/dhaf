@@ -22,6 +22,8 @@ One of the switchers implemented in Dhaf is the Cloudflare provider. This compan
 Thus, this mechanism can be used to avoid a single point of failure ([SPoF](https://en.wikipedia.org/wiki/Single_point_of_failure)) of your network service (website, etc.). This is completely legal and in accordance with Cloudflare rules (using their official API).
 Also a bonus are important security features: protection from DDoS and hiding the real IP of your servers.
 
+\* However, this is not the only option. For example, you can use `Google Cloud` switcher provider or `Exec`.
+
 # Who is it suitable for?
 This solution is perfect for small and medium-sized projects that are not ready to spend huge resources (including financial) to maintain high availability of their services. If you want to provide HA fast and simple then this solution is for you.
 
@@ -50,7 +52,9 @@ The following is recommended for stable operation of this solution:
     -  .NET Runtime >= 5.0 (download [here](https://dotnet.microsoft.com/download/dotnet/5.0/runtime)).
 
 # Quick Start
-Below is a simple example of how to make dhaf work (with Cloudflare provider as switcher).
+### With Cloudflare switcher provider
+\* The SLA [promises](https://www.cloudflare.com/business-sla/) 100% uptime.
+
 1. Suppose you have two similar servers in different data centers, which both provide your web-service:
     |Name|IP|Priority|
     | :-: | :-: | :-: |
@@ -103,6 +107,35 @@ services:
 ```
 11. Congratulations! Everything works. And now you can test failures of your servers as an experiment.
 
+### With Google Cloud switcher provider
+\* The SLA [promises](https://cloud.google.com/compute/sla) >= 99.99% monthly uptime.
+This provider may be needed for those who for some reason do not want to deal with Cloudflare. Note that Google Cloud services are **paid** (although very cheap for our purposes), unlike other switcher providers. Also, this method is more complicated than the others. The **dhaf** itself, of course, is always free.
+
+The idea is that with the Google Cloud / Compute Engine we will create a high availability entry point (hereinafter referred to as Google Cloud gateway) into your web service that can proxy end user requests to your own balancers/backends/etc. With **dhaf**, it will be possible to immediately switch entry points to healthy/relevant ones. The Google Cloud gateway has a static IP address, which can be specified in your DNS records (and will not need to be changed).
+
+The Google Cloud gateway implementation is based on several [VM](https://cloud.google.com/compute/docs/instances) instances in multiple zones with TCP load balancer ([Layer 4](https://developers.google.com/compute/docs/load-balancing/network/?hl=en_US)). Consistent state among VM instances is guaranteed through the use of [metadata](https://cloud.google.com/compute/docs/metadata/overview) at the level of the entire Google Cloud project (this is a simple key-value storage that is available inside each VM instance). The load balancer has a static IP address and is a Google Cloud gateway.
+
+Thus, each VM instance performs a reverse proxy function to the server specified in the project metadata, and the load balancer ensures constant availability to the VM instances. Even if a few of the VM instances go down, which is unlikely (each instance is [guaranteed](https://cloud.google.com/compute/sla) to have >= 99.5% monthly uptime), the gateway will still continue to work. As stated above, the gateway monthly uptime is >=99.99%.
+
+What remains to be understood is how to implement it. In fact, it's up to you to decide. However, for a start, below we offer a working variant (template), which you can change to suit you. The main thing is to ensure that the principles described above are followed. So, you should do the following in Google Cloud:
+1. Create a VM [instance template](https://cloud.google.com/compute/docs/instance-templates) (_Compute Engine → Virtual Machines → Instance templates_ in GC Console). Each instance can be the cheapest machine (e.g. `e2-micro` with 2 vCPUs, 1 GB memory), since reverse proxying does not take much resources. A Linux-like operating system (e.g. Debian or Ubuntu) is highly recommended as a distribution. How to provide reverse proxying on each instance will be described below;
+2. Create a **managed** group of VM instances / [MIG](https://cloud.google.com/compute/docs/instance-groups#managed_instance_groups) (_Compute Engine → Instance groups → Instance groups_ in GC Console) in **different** [zones](https://cloud.google.com/compute/docs/regions-zones) of the same region based on instance template. The IP addresses of the VM instances can be [ephemeral](https://cloud.google.com/compute/docs/ip-addresses#ephemeraladdress) — it does not matter. There must be two or three VM instances in group at least;
+3. Create [health checks](https://cloud.google.com/compute/docs/load-balancing/health-checks) (_Compute Engine → Instance groups → Health checks_ in GC Console) for the managed instance group created above. This could be, for example, HTTP health checks (if you provide endpoints on the VM instances for this). The health criteria should be strict (e.g., 10 seconds for check interval and 5 seconds timeout);
+4. Create a [TCP load balancer](https://cloud.google.com/load-balancing/docs/tcp) (_Networking → Network services → Load balancing_ in GC Console) based on the managed instance group created above. It must have a [premium](https://cloud.google.com/network-tiers/docs/using-network-service-tiers) static IP address. This will act as a Google cloud gateway;
+5. In the A-record of the DNS domain of your web service, write the IP address of the Google cloud gateway (the load balancer created by the step above).
+
+So, a high availability entry point has been created. However, as mentioned above, each VM instance must act as a reverse proxy to the server specified in the Google Cloud project metadata. How to do it is also up to you. You can use [haproxy](https://en.wikipedia.org/wiki/HAProxy)/[nginx](https://en.wikipedia.org/wiki/Nginx)/[envoy](https://www.envoyproxy.io/)/etc. We propose to use nginx as the easiest solution. See the template for getting started [here](templates/agents/google-cloud).
+
+The **dhaf** configuration in the case of the current provider is similar to the configuration with, for example, Cloudflare. However, the swither section in the service will look different. For example, like this:
+```yaml
+switcher:
+  type: google-cloud
+  project: gcprj
+  metadata-key: dhaf-serv1-ip
+  credentials-path: gcprj-16b1a111a555.json
+```
+**Dhaf** will manage the values in the project metadata itself.
+
 # What are the benefits of dhaf being a cluster?
 Well, such as these:
 - If one of the dhaf cluster nodes fails, the cluster itself will still continue to work (as long as possible). If the leader fails, a so-called race for the leader will immediately [begin](https://en.wikipedia.org/wiki/Leader_election), i.e. a new leader will be determined by the "first come, first served" method;
@@ -126,6 +159,7 @@ Similar functionality to the CLI (because the CLI uses the REST API). Detailed d
 |Type|Name|Description|
 | :-: | :-: | - |
 | switcher | cloudflare | Performs entry points switching by quickly changing Cloudflare DNS records. |
+| switcher | google-cloud | Performs entry points switching via Google Cloud gateway. |
 | switcher | exec | Switching entry points via an executable file (e.g. a Python script). |
 | health checker | web | Checks the health of the http(s) service. |
 | health checker | exec | Checks the health of service via an executable file (e.g. a Python script). |
@@ -136,21 +170,23 @@ Need another extension? Leave a [feature request](https://github.com/hyperion-cs
 
 # Configuration file
 ### Major part (required)
+⚠️ All **names** are limited to 64 characters in length. Also, only the characters `a-zA-Z0-9`, `-` (hyphen) and `_` are allowed.
+
 |Parameter name|Type|Description|
 | - | :-: | - |
-| `dhaf.cluster-name` | string | Dhaf cluster-name. Only the characters `a-zA-Z0-9`, `-` (hyphen) and `_` are allowed. |
-| `dhaf.node-name` | string | The name of the current dhaf cluster node. Only the characters `a-zA-Z0-9`, `-` (hyphen) and `_` are allowed. |
+| `dhaf.cluster-name` | string | Dhaf cluster-name.  |
+| `dhaf.node-name` | string | The name of the current dhaf cluster node. |
 | `etcd.hosts` | string | Etcd hosts in the format `ip1:port1,ip2:port2,...,ipN:portN`. |
 | `services` | list | The list of services that dhaf will keep available. |
-| `services[].name` | string | The name of the service. Only the characters `a-zA-Z0-9`, `-` (hyphen) and `_` are allowed. |
-| `services[].domain` | string | Domain name for service <name>. For example, `site.com`. |
-| `services[].entry-points` | list | List of entry points for service <name> in **order** of priority. |
-| `services[].entry-points[].name` | string | The name of the entry point. Only the characters `a-zA-Z0-9`, `-` (hyphen) and `_` are allowed. |
-| `services[].entry-points[].ip` | string | The IP address of the entry point <name>. |
-| `services[].switcher` | object | Switcher for service <name>. |
-| `services[].switcher.type` | object | Name (provider type) of switcher for service <name>. |
-| `services[].health-checker` | object | Health checker for service <name>. |
-| `services[].health-checker.type` | object | Name (provider type) of health checker for service <name>. |
+| `services[].name` | string | The name of the service. |
+| `services[].domain` | string | Domain name for service \<name\>. For example, `site.com`. |
+| `services[].entry-points` | list | List of entry points for service \<name\> in **order** of priority. |
+| `services[].entry-points[].name` | string | The name of the entry point. |
+| `services[].entry-points[].ip` | string | The IP address of the entry point \<name\>. |
+| `services[].switcher` | object | Switcher for service \<name\>. |
+| `services[].switcher.type` | object | Name (provider type) of switcher for service \<name\>. |
+| `services[].health-checker` | object | Health checker for service \<name\>. |
+| `services[].health-checker.type` | object | Name (provider type) of health checker for service \<name\>. |
    
 ### Optional
 |Parameter name|Type|Description|Default|
@@ -158,6 +194,7 @@ Need another extension? Leave a [feature request](https://github.com/hyperion-cs
 | `dhaf.healthy-node-status-ttl` | string | For how long the dhaf node is considered healthy after the last heartbeat. | `30` |
 | `dhaf.heartbeat-interval` | string | Frequency of sending heartbeat of node dhaf to distributed storage (dcs). | `5` |
 | `dhaf.tact-interval` | string | How often the dhaf should perform checks (in seconds). It is counted after the completion of the last check. Must be in the range 1-3600 seconds. | `10` |
+| `dhaf.tact-post-switch-delay` | string | Delay before the next tact in the case of a failover/switchover/switching. Must be in the range 0-3600 seconds. | `0` |
 | `dhaf.web-api` | string | REST API configuration for the dhaf node. | — |
 | `dhaf.web-api.host` | string | REST API Host. | `localhost` |
 | `dhaf.web-api.port` | int | Rest API Port | `8128` |
@@ -171,6 +208,13 @@ Cloudflare switcher provider (`cloudflare`):
 | - | :-: | - | :-: |
 | `api-token` | string | API token for managing your DNS records in Cloudflare. | Required |
 | `zone` | string | Zone for managing your DNS records in Cloudflare. | Required |
+    
+Google cloud switcher provider (`google-cloud`):
+|Parameter name|Type|Description|Default|
+| - | :-: | - | :-: |
+| `project` | string | Google Cloud [project](https://cloud.google.com/resource-manager/docs/creating-managing-projects) ID. | Required |
+| `metadata-key` | string | Google Cloud [metadata](https://cloud.google.com/compute/docs/metadata/overview) key. Dhaf uses this key to tell the Google Cloud gateway to switch to another entry point. | Required |
+| `credentials-path` | string | Path to the *.json* file containing the Google Cloud [service account key](https://cloud.google.com/iam/docs/creating-managing-service-account-keys#creating_service_account_keys) (сan be specified relative to `dhaf.node`). This service account must have [access](https://cloud.google.com/compute/docs/access/iam) to project metadata management (_Compute Engine → Settings → Metadata_ in GC Console). The `roles/compute.instanceAdmin.v1` role is suitable. | Required |
     
 Exec switcher provider (`exec`):
 |Parameter name|Type|Description|Default|
@@ -203,8 +247,8 @@ Exec health check provider (`exec`):
 | `check` | string | Path to the executable file to health check. The command line arguments for health check will be passed: [entry point name, entry point ip]. Should return exit code 0 if the entry point is considered healthy. | Required |
     
 ### Configurations for notifier providers
-⚠️ Pay attention! There can be several of them in one cluster.
-    
+⚠️ Pay attention! There can be several of them in one cluster. However, they will be the same for all services.
+
 E-Mail notifier provider (`email`):
 |Parameter name|Type|Description|Default|
 | - | :-: | - | :-: |
