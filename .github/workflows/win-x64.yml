@@ -42,49 +42,36 @@ jobs:
         dotnet publish src/Dhaf.Notifiers.Email/Dhaf.Notifiers.Email.csproj --configuration Release --no-restore -nowarn:CS1998 -r win-x64 -o bin/win-x64/ext/ntf/email /p:DebugType=None /p:DebugSymbols=false
         dotnet publish src/Dhaf.Notifiers.Telegram/Dhaf.Notifiers.Telegram.csproj --configuration Release --no-restore -nowarn:CS1998 -r win-x64 -o bin/win-x64/ext/ntf/tg /p:DebugType=None /p:DebugSymbols=false
 
+    - name: set the release version from tag
+      run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
     - name: prepare artifacts
       run: |
-        mkdir -p win-x64-artifacts
-        mkdir -p win-x64-artifacts/libs
-        mkdir -p win-x64-artifacts/extensions/health-checkers/web
-        mkdir -p win-x64-artifacts/extensions/health-checkers/exec
-        mkdir -p win-x64-artifacts/extensions/switchers/cloudflare
-        mkdir -p win-x64-artifacts/extensions/switchers/google-cloud
-        mkdir -p win-x64-artifacts/extensions/switchers/exec
-        mkdir -p win-x64-artifacts/extensions/notifiers/email
-        mkdir -p win-x64-artifacts/extensions/notifiers/tg
+        mkdir -p dhaf-${{ env.RELEASE_VERSION }}
+        mkdir -p dhaf-${{ env.RELEASE_VERSION }}/libs
+        mkdir -p dhaf-${{ env.RELEASE_VERSION }}/extensions/health-checkers/web
+        mkdir -p dhaf-${{ env.RELEASE_VERSION }}/extensions/health-checkers/exec
+        mkdir -p dhaf-${{ env.RELEASE_VERSION }}/extensions/switchers/cloudflare
+        mkdir -p dhaf-${{ env.RELEASE_VERSION }}/extensions/switchers/google-cloud
+        mkdir -p dhaf-${{ env.RELEASE_VERSION }}/extensions/switchers/exec
+        mkdir -p dhaf-${{ env.RELEASE_VERSION }}/extensions/notifiers/email
+        mkdir -p dhaf-${{ env.RELEASE_VERSION }}/extensions/notifiers/tg
 
-        mv ./bin/win-x64/Dhaf.Node.exe win-x64-artifacts/Dhaf.Node.exe
-        mv ./bin/win-x64/Dhaf.CLI.exe win-x64-artifacts/Dhaf.CLI.exe
-        mv ./bin/win-x64/appsettings.json ./bin/win-x64/nlog.config win-x64-artifacts
-        mv ./bin/win-x64/core/* win-x64-artifacts/libs
+        mv ./bin/win-x64/Dhaf.Node.exe dhaf-${{ env.RELEASE_VERSION }}/Dhaf.Node.exe
+        mv ./bin/win-x64/Dhaf.CLI.exe dhaf-${{ env.RELEASE_VERSION }}/Dhaf.CLI.exe
+        mv ./bin/win-x64/appsettings.json ./bin/win-x64/nlog.config dhaf-${{ env.RELEASE_VERSION }}
+        mv ./bin/win-x64/core/* dhaf-${{ env.RELEASE_VERSION }}/libs
 
-        mv ./bin/win-x64/ext/hc/web/* win-x64-artifacts/extensions/health-checkers/web
-        mv ./bin/win-x64/ext/hc/exec/* win-x64-artifacts/extensions/health-checkers/exec
-        mv ./bin/win-x64/ext/sw/cloudflare/* win-x64-artifacts/extensions/switchers/cloudflare
-        mv ./bin/win-x64/ext/sw/google-cloud/* win-x64-artifacts/extensions/switchers/google-cloud
-        mv ./bin/win-x64/ext/sw/exec/* win-x64-artifacts/extensions/switchers/exec
-        mv ./bin/win-x64/ext/ntf/email/* win-x64-artifacts/extensions/notifiers/email
-        mv ./bin/win-x64/ext/ntf/tg/* win-x64-artifacts/extensions/notifiers/tg
+        mv ./bin/win-x64/ext/hc/web/* dhaf-${{ env.RELEASE_VERSION }}/extensions/health-checkers/web
+        mv ./bin/win-x64/ext/hc/exec/* dhaf-${{ env.RELEASE_VERSION }}/extensions/health-checkers/exec
+        mv ./bin/win-x64/ext/sw/cloudflare/* dhaf-${{ env.RELEASE_VERSION }}/extensions/switchers/cloudflare
+        mv ./bin/win-x64/ext/sw/google-cloud/* dhaf-${{ env.RELEASE_VERSION }}/extensions/switchers/google-cloud
+        mv ./bin/win-x64/ext/sw/exec/* dhaf-${{ env.RELEASE_VERSION }}/extensions/switchers/exec
+        mv ./bin/win-x64/ext/ntf/email/* dhaf-${{ env.RELEASE_VERSION }}/extensions/notifiers/email
+        mv ./bin/win-x64/ext/ntf/tg/* dhaf-${{ env.RELEASE_VERSION }}/extensions/notifiers/tg
 
     - name: upload artifacts
       uses: actions/upload-artifact@master
       with:
-        name: win-x64-artifacts
-        path: win-x64-artifacts
-
-    - name: set the release version from tag
-      run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-
-    - name: zip artifacts
-      uses: papeloto/action-zip@v1
-      with:
-        files: win-x64-artifacts
-        recursive: true
-        dest: dhaf-${{ env.RELEASE_VERSION }}.zip
-
-    - name: release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags')
-      with:
-        files: dhaf-${{ env.RELEASE_VERSION }}.zip
+        name: dhaf-${{ env.RELEASE_VERSION }}
+        path: dhaf-${{ env.RELEASE_VERSION }}
