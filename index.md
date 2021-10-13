@@ -72,6 +72,7 @@ The following is recommended for stable operation of this solution:
     - ⚠️ Warning! To combat scammers, Cloudflare does not allow DNS configuration via the official API for domains with a .cf, .ga, .gq, .ml, or .tk TLD (top-level domain). Thus, it is not possible to work with them in **dhaf** either. However, it is still possible to manually configure them in Cloudflare Dashboard.
 6. Using the Clouflare dashboard, [create](https://dash.cloudflare.com/profile/api-tokens) an API token (if you have not already done so) with access to edit the DNS records of your domain zone. You also need to set an adequate TTL (lifetime) of your token, and keep it up to date.
 7. For the **first** dhaf node, сreate a configuration file `config-n1.dhaf`, which has the following contents:
+
 ```yaml
 dhaf:
   cluster-name: first-dhaf-cluster
@@ -96,6 +97,7 @@ services:
       type: web
       schema: http
 ```
+
 8. As you can see from the value of the `dhaf.node-name` parameter of the configuration file above, it is intended for the first dhaf node. Create two more of these, replacing the value of the parameter `dhaf.node-name` with `node-2` and `node-3` respectively (as well as the name of the config so as not to get confused);
 9. The only thing left to do is to run dhaf on all dhaf servers (don't forget to substitute the appropriate configuration file):
 ```shell
@@ -189,6 +191,7 @@ Need another extension? Leave a [feature request](https://github.com/hyperion-cs
 | `services[].health-checker.type` | object | Name (provider type) of health checker for service \<name\>. |
    
 ### Optional
+
 |Parameter name|Type|Description|Default|
 | - | :-: | - | :-: |
 | `dhaf.healthy-node-status-ttl` | string | For how long the dhaf node is considered healthy after the last heartbeat. | `30` |
@@ -204,12 +207,14 @@ Need another extension? Leave a [feature request](https://github.com/hyperion-cs
 ### Configurations for switchers providers
     
 Cloudflare switcher provider (`cloudflare`):
+
 |Parameter name|Type|Description|Default|
 | - | :-: | - | :-: |
 | `api-token` | string | API token for managing your DNS records in Cloudflare. | Required |
 | `zone` | string | Zone for managing your DNS records in Cloudflare. | Required |
     
 Google cloud switcher provider (`google-cloud`):
+
 |Parameter name|Type|Description|Default|
 | - | :-: | - | :-: |
 | `project` | string | Google Cloud [project](https://cloud.google.com/resource-manager/docs/creating-managing-projects) ID. | Required |
@@ -217,6 +222,7 @@ Google cloud switcher provider (`google-cloud`):
 | `credentials-path` | string | Path to the *.json* file containing the Google Cloud [service account key](https://cloud.google.com/iam/docs/creating-managing-service-account-keys#creating_service_account_keys) (сan be specified relative to `dhaf.node`). This service account must have [access](https://cloud.google.com/compute/docs/access/iam) to project metadata management (_Compute Engine → Settings → Metadata_ in GC Console). The `roles/compute.instanceAdmin.v1` role is suitable. | Required |
     
 Exec switcher provider (`exec`):
+
 |Parameter name|Type|Description|Default|
 | - | :-: | - | :-: |
 | `init` | string | Path to the executable file for provider initialization. | Required |
@@ -225,6 +231,7 @@ Exec switcher provider (`exec`):
 ### Configurations for health check providers
 
 Web health check provider (`web`):
+
 |Parameter name|Type|Description|Default|
 | - | :-: | - | :-: |
 | `schema` | string | Uri schema. Now `http` and `https` are available. | `http` |
@@ -241,6 +248,7 @@ Web health check provider (`web`):
 | `ignore-ssl-errors` | bool | Ignore SSL certificate validation errors (applies to `HTTPS` schema only). | `false` |
     
 Exec health check provider (`exec`):
+
 |Parameter name|Type|Description|Default|
 | - | :-: | - | :-: |
 | `init` | string | Path to the executable file for provider initialization. | Required |
@@ -250,6 +258,7 @@ Exec health check provider (`exec`):
 ⚠️ Pay attention! There can be several of them in one cluster. However, they will be the same for all services.
 
 E-Mail notifier provider (`email`):
+
 |Parameter name|Type|Description|Default|
 | - | :-: | - | :-: |
 | name | string | Notifier instance name. | `email-anon` |
@@ -263,6 +272,7 @@ E-Mail notifier provider (`email`):
 | smtp.password | string | SMTP server credentials -> password. | — |
     
 Telegram messenger notifier provider (`tg`):
+
 |Parameter name|Type|Description|Default|
 | - | :-: | - | :-: |
 | name | string | Notifier instance name. | `tg-anon` |
