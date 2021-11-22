@@ -66,7 +66,7 @@ jobs:
 
         mv ./bin/linux-x64/ext/hc/web/* dhaf-${{ env.RELEASE_VERSION }}/extensions/health-checkers/web
         mv ./bin/linux-x64/ext/hc/exec/* dhaf-${{ env.RELEASE_VERSION }}/extensions/health-checkers/exec
-        mv ./bin/linux-x64/ext/hc/exec/* dhaf-${{ env.RELEASE_VERSION }}/extensions/health-checkers/tcp
+        mv ./bin/linux-x64/ext/hc/tcp/* dhaf-${{ env.RELEASE_VERSION }}/extensions/health-checkers/tcp
         mv ./bin/linux-x64/ext/sw/cloudflare/* dhaf-${{ env.RELEASE_VERSION }}/extensions/switchers/cloudflare
         mv ./bin/linux-x64/ext/sw/google-cloud/* dhaf-${{ env.RELEASE_VERSION }}/extensions/switchers/google-cloud
         mv ./bin/linux-x64/ext/sw/exec/* dhaf-${{ env.RELEASE_VERSION }}/extensions/switchers/exec
