@@ -39,10 +39,12 @@ namespace Dhaf.HealthCheckers.Web
             _config = (Config)options.Config;
             _internalConfig = (InternalConfig)options.InternalConfig;
 
+            const int MS_IN_SEC = 1000;
+
             _client = new RestClient()
             {
                 FollowRedirects = _config.FollowRedirects ?? _internalConfig.DefFollowRedirects,
-                Timeout = _config.Timeout ?? _internalConfig.DefTimeout
+                Timeout = (_config.Timeout ?? _internalConfig.DefTimeout) * MS_IN_SEC
             };
 
             var ignoreSslErrors = _config.IgnoreSslErrors ?? _internalConfig.DefIgnoreSslErrors;
@@ -53,6 +55,7 @@ namespace Dhaf.HealthCheckers.Web
 
             _requestSchema = PrepareSchema(_config.Schema ?? _internalConfig.HttpSchema);
 
+            await ConfigCheck();
             _logger.LogInformation($"{Sign} Init OK.");
         }
 

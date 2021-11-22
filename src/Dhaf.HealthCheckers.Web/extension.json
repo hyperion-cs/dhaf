@@ -10,7 +10,7 @@
     "defPath": "",
     "defHeaders": {},
     "defFollowRedirects": false,
-    "defTimeout": 5000,
+    "defTimeout": 5,
     "defRetries": 2,
     "defExpectedCodes": "200",
     "expectedCodesSeparator": ",",
