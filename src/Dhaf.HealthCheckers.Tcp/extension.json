@@ -1,0 +1,8 @@
+{
+  "entryPoint": "Dhaf.HealthCheckers.Tcp.dll",
+  "internalConfiguration": {
+    "defReceiveTimeout": 5,
+    "minReceiveTimeout": 1,
+    "maxReceiveTimeout": 86400
+  }
+}

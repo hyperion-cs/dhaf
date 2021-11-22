@@ -34,6 +34,7 @@ jobs:
       run: |
         dotnet publish src/Dhaf.HealthCheckers.Web/Dhaf.HealthCheckers.Web.csproj --configuration Release --no-restore -nowarn:CS1998 -r linux-x64 -o bin/linux-x64/ext/hc/web /p:DebugType=None /p:DebugSymbols=false
         dotnet publish src/Dhaf.HealthCheckers.Exec/Dhaf.HealthCheckers.Exec.csproj --configuration Release --no-restore -nowarn:CS1998 -r linux-x64 -o bin/linux-x64/ext/hc/exec /p:DebugType=None /p:DebugSymbols=false
+        dotnet publish src/Dhaf.HealthCheckers.Tcp/Dhaf.HealthCheckers.Tcp.csproj --configuration Release --no-restore -nowarn:CS1998 -r linux-x64 -o bin/linux-x64/ext/hc/tcp /p:DebugType=None /p:DebugSymbols=false
         
         dotnet publish src/Dhaf.Switchers.Cloudflare/Dhaf.Switchers.Cloudflare.csproj --configuration Release --no-restore -nowarn:CS1998 -r linux-x64 -o bin/linux-x64/ext/sw/cloudflare /p:DebugType=None /p:DebugSymbols=false
         dotnet publish src/Dhaf.Switchers.GoogleCloud/Dhaf.Switchers.GoogleCloud.csproj --configuration Release --no-restore -nowarn:CS1998 -r linux-x64 -o bin/linux-x64/ext/sw/google-cloud /p:DebugType=None /p:DebugSymbols=false
@@ -51,6 +52,7 @@ jobs:
         mkdir -p dhaf-${{ env.RELEASE_VERSION }}/libs
         mkdir -p dhaf-${{ env.RELEASE_VERSION }}/extensions/health-checkers/web
         mkdir -p dhaf-${{ env.RELEASE_VERSION }}/extensions/health-checkers/exec
+        mkdir -p dhaf-${{ env.RELEASE_VERSION }}/extensions/health-checkers/tcp
         mkdir -p dhaf-${{ env.RELEASE_VERSION }}/extensions/switchers/cloudflare
         mkdir -p dhaf-${{ env.RELEASE_VERSION }}/extensions/switchers/google-cloud
         mkdir -p dhaf-${{ env.RELEASE_VERSION }}/extensions/switchers/exec
@@ -64,6 +66,7 @@ jobs:
 
         mv ./bin/linux-x64/ext/hc/web/* dhaf-${{ env.RELEASE_VERSION }}/extensions/health-checkers/web
         mv ./bin/linux-x64/ext/hc/exec/* dhaf-${{ env.RELEASE_VERSION }}/extensions/health-checkers/exec
+        mv ./bin/linux-x64/ext/hc/exec/* dhaf-${{ env.RELEASE_VERSION }}/extensions/health-checkers/tcp
         mv ./bin/linux-x64/ext/sw/cloudflare/* dhaf-${{ env.RELEASE_VERSION }}/extensions/switchers/cloudflare
         mv ./bin/linux-x64/ext/sw/google-cloud/* dhaf-${{ env.RELEASE_VERSION }}/extensions/switchers/google-cloud
         mv ./bin/linux-x64/ext/sw/exec/* dhaf-${{ env.RELEASE_VERSION }}/extensions/switchers/exec
