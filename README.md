@@ -165,6 +165,7 @@ Similar functionality to the CLI (because the CLI uses the REST API). Detailed d
 | switcher | exec | Switching entry points via an executable file (e.g. a Python script). |
 | health checker | web | Checks the health of the http(s) service. |
 | health checker | exec | Checks the health of service via an executable file (e.g. a Python script). |
+| health checker | tcp | Tcp health checker. |
 | notifier | email | Email notifications from dhaf. |
 | notifier | tg | Telegram messenger notifications from dhaf. |
 
@@ -253,6 +254,13 @@ Exec health check provider (`exec`):
 | - | :-: | - | :-: |
 | `init` | string | Path to the executable file for provider initialization. | Required |
 | `check` | string | Path to the executable file to health check. The command line arguments for health check will be passed: [entry point name, entry point ip]. Should return exit code 0 if the entry point is considered healthy. | Required |
+
+Tcp health check provider (`tcp`):
+
+|Parameter name|Type|Description|Default|
+| - | :-: | - | :-: |
+| `port` | int | Port for TCP connection. | Required |
+| `receiveTimeout` | int | Timeout (in seconds) for data receiving. Must be in the range 1-86400 seconds. | `5` |
     
 ### Configurations for notifier providers
 ⚠️ Pay attention! There can be several of them in one cluster. However, they will be the same for all services.
