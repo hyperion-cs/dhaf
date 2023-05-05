@@ -10,45 +10,7 @@ namespace Dhaf.Core.Tests
         [Fact]
         public async Task ParseTest()
         {
-            var switcher = new Mock<ISwitcher>();
-            switcher.Setup(x => x.ExtensionName).Returns("cloudflare");
-            switcher.Setup(x => x.ConfigType).Returns(typeof(SwitcherConfigMock));
-            switcher.Setup(x => x.InternalConfigType).Returns(typeof(SwitcherInternalConfigMock));
-
-            var healthChecker = new Mock<IHealthChecker>();
-            healthChecker.Setup(x => x.ExtensionName).Returns("web");
-            healthChecker.Setup(x => x.ConfigType).Returns(typeof(HealthCheckerConfigMock));
-            healthChecker.Setup(x => x.InternalConfigType).Returns(typeof(HealthCheckerInternalConfigMock));
-
-            var tgNotifier = new Mock<INotifier>();
-            tgNotifier.Setup(x => x.ExtensionName).Returns("tg");
-            tgNotifier.Setup(x => x.ConfigType).Returns(typeof(NotifierConfigMock));
-            tgNotifier.Setup(x => x.InternalConfigType).Returns(typeof(NotifierInternalConfigMock));
-
-            var extensionsScope = new ExtensionsScope
-            {
-                Switchers = new List<DhafExtension<ISwitcher>>()
-                {
-                    new DhafExtension<ISwitcher>
-                    {
-                        ExtensionPath = "sw/cloudflare", Instance = switcher.Object
-                    }
-                },
-                HealthCheckers = new List<DhafExtension<IHealthChecker>>()
-                {
-                    new DhafExtension<IHealthChecker>
-                    {
-                        ExtensionPath = "hc/web", Instance = healthChecker.Object
-                    }
-                },
-                Notifiers = new List<DhafExtension<INotifier>>()
-                {
-                    new DhafExtension<INotifier>
-                    {
-                        ExtensionPath = "ntf/tg", Instance = tgNotifier.Object
-                    }
-                }
-            };
+            var extensionsScope = GetExtensionsScope();
 
             var internalConfig = new DhafInternalConfig
             {
@@ -56,7 +18,8 @@ namespace Dhaf.Core.Tests
                 Etcd = new DhafInternalConfigEtcd
                 {
                     DefLeaderKeyTtl = 20,
-                }
+                },
+                NameMaxLength = 64
             };
 
             var configParser = new ClusterConfigParser("Data/test_config_1.dhaf", extensionsScope, internalConfig);
@@ -111,6 +74,51 @@ namespace Dhaf.Core.Tests
             Assert.NotNull(ntf1);
             Assert.Equal("a", ntf1.ExtensionName);
             Assert.Equal("a", ntf1.Name);
+        }
+
+        private ExtensionsScope GetExtensionsScope()
+        {
+            var switcher = new Mock<ISwitcher>();
+            switcher.Setup(x => x.ExtensionName).Returns("cloudflare");
+            switcher.Setup(x => x.ConfigType).Returns(typeof(SwitcherConfigMock));
+            switcher.Setup(x => x.InternalConfigType).Returns(typeof(SwitcherInternalConfigMock));
+
+            var healthChecker = new Mock<IHealthChecker>();
+            healthChecker.Setup(x => x.ExtensionName).Returns("web");
+            healthChecker.Setup(x => x.ConfigType).Returns(typeof(HealthCheckerConfigMock));
+            healthChecker.Setup(x => x.InternalConfigType).Returns(typeof(HealthCheckerInternalConfigMock));
+
+            var tgNotifier = new Mock<INotifier>();
+            tgNotifier.Setup(x => x.ExtensionName).Returns("tg");
+            tgNotifier.Setup(x => x.ConfigType).Returns(typeof(NotifierConfigMock));
+            tgNotifier.Setup(x => x.InternalConfigType).Returns(typeof(NotifierInternalConfigMock));
+
+            var extensionsScope = new ExtensionsScope
+            {
+                Switchers = new List<DhafExtension<ISwitcher>>()
+                {
+                    new DhafExtension<ISwitcher>
+                    {
+                        ExtensionPath = "sw/cloudflare", Instance = switcher.Object
+                    }
+                },
+                HealthCheckers = new List<DhafExtension<IHealthChecker>>()
+                {
+                    new DhafExtension<IHealthChecker>
+                    {
+                        ExtensionPath = "hc/web", Instance = healthChecker.Object
+                    }
+                },
+                Notifiers = new List<DhafExtension<INotifier>>()
+                {
+                    new DhafExtension<INotifier>
+                    {
+                        ExtensionPath = "ntf/tg", Instance = tgNotifier.Object
+                    }
+                }
+            };
+
+            return extensionsScope;
         }
     }
 }

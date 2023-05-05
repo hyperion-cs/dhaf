@@ -1,22 +1,17 @@
-﻿using Dhaf.Core;
-using Dhaf.Node;
-using RestSharp;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Dhaf.Core;
+using Dhaf.Node;
+using RestSharp;
 
 namespace Dhaf.CLI
 {
     public static partial class Actions
     {
         private static IRestClient _restClient;
-
-        static Actions()
-        {
-            _restClient = new RestClient();
-        }
-
+    
         private static async Task<ClusterConfig> GetClusterConfig(IConfigPath opt)
         {
             var clusterConfigParser = new ClusterConfigParser(opt.Config);
@@ -30,7 +25,9 @@ namespace Dhaf.CLI
             var config = await GetClusterConfig(opt);
             var webApiEndpoint = config.Dhaf.WebApi;
             var uri = new Uri($"http://{webApiEndpoint.Host}:{webApiEndpoint.Port}/");
-            _restClient.BaseUrl = uri;
+
+            var options = new RestClientOptions { BaseUrl = uri };
+            _restClient = new RestClient(options);
         }
 
         private static void PrintErrors(IEnumerable<RestApiError> errors)

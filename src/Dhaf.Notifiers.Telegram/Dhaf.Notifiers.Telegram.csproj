@@ -1,14 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net5</TargetFramework>
+		<TargetFramework>net7.0</TargetFramework>
 		<RuntimeIdentifiers>linux-x64;osx-x64;win-x64</RuntimeIdentifiers>
 		<InvariantGlobalization>true</InvariantGlobalization>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Telegram.Bot" Version="16.0.2" />
+		<PackageReference Include="Telegram.Bot" Version="18.0.0" />
 		<PackageReference Include="Telegram.Bot.Extensions.Polling" Version="0.2.0" />
+		<PackageReference Include="Telegram.Bots.Extensions.Polling" Version="5.9.0" />
 	</ItemGroup>
 
 	<ItemGroup>

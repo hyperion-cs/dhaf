@@ -38,7 +38,7 @@ namespace Dhaf.CLI
                     dhafStatus.Leader == node.Name ? "[white]Leader[/]" : "Follower");
             }
 
-            AnsiConsole.Render(table);
+            AnsiConsole.Write(table);
             return 0;
         }
     }
