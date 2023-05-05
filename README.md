@@ -332,4 +332,3 @@ You can run (e.g., to manually test the extension) directly using `Dhaf.Node`. Y
 - Failover — emergency switching of the entry point in automatic mode;
 - Switchover — knowingly manually switching entry points (for maintenance, testing, etc.);
 - Switching — automatically switching of the entry point to the higher priority of the healthy ones.
-    
