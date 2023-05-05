@@ -42,7 +42,7 @@ namespace Dhaf.CLI
                 summaryTable.AddRow("Service status", isUp);
                 summaryTable.AddRow("Domain", serviceStatus.Domain);
                 summaryTable.AddRow("Switchover is required", sw);
-                AnsiConsole.Render(summaryTable);
+                AnsiConsole.Write(summaryTable);
 
                 Console.WriteLine();
                 var epTable = new Table
@@ -70,7 +70,7 @@ namespace Dhaf.CLI
                         nc.Healthy ? "[green]Yes[/]" : "[red]No[/]", status);
                 }
 
-                AnsiConsole.Render(epTable);
+                AnsiConsole.Write(epTable);
 
                 const char SEP_CHAR = '=';
                 Console.WriteLine(new string(SEP_CHAR, TABLE_WIDTH) + "\n");

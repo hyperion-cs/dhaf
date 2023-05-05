@@ -1,4 +1,7 @@
+using Castle.Core.Configuration;
+using Microsoft.Extensions.Configuration;
 using Moq;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
@@ -10,54 +13,11 @@ namespace Dhaf.Core.Tests
         [Fact]
         public async Task ParseTest()
         {
-            var switcher = new Mock<ISwitcher>();
-            switcher.Setup(x => x.ExtensionName).Returns("cloudflare");
-            switcher.Setup(x => x.ConfigType).Returns(typeof(SwitcherConfigMock));
-            switcher.Setup(x => x.InternalConfigType).Returns(typeof(SwitcherInternalConfigMock));
+            var extensionsScope = GetExtensionsScope();
+            var _configuration = GetConfiguration();
 
-            var healthChecker = new Mock<IHealthChecker>();
-            healthChecker.Setup(x => x.ExtensionName).Returns("web");
-            healthChecker.Setup(x => x.ConfigType).Returns(typeof(HealthCheckerConfigMock));
-            healthChecker.Setup(x => x.InternalConfigType).Returns(typeof(HealthCheckerInternalConfigMock));
-
-            var tgNotifier = new Mock<INotifier>();
-            tgNotifier.Setup(x => x.ExtensionName).Returns("tg");
-            tgNotifier.Setup(x => x.ConfigType).Returns(typeof(NotifierConfigMock));
-            tgNotifier.Setup(x => x.InternalConfigType).Returns(typeof(NotifierInternalConfigMock));
-
-            var extensionsScope = new ExtensionsScope
-            {
-                Switchers = new List<DhafExtension<ISwitcher>>()
-                {
-                    new DhafExtension<ISwitcher>
-                    {
-                        ExtensionPath = "sw/cloudflare", Instance = switcher.Object
-                    }
-                },
-                HealthCheckers = new List<DhafExtension<IHealthChecker>>()
-                {
-                    new DhafExtension<IHealthChecker>
-                    {
-                        ExtensionPath = "hc/web", Instance = healthChecker.Object
-                    }
-                },
-                Notifiers = new List<DhafExtension<INotifier>>()
-                {
-                    new DhafExtension<INotifier>
-                    {
-                        ExtensionPath = "ntf/tg", Instance = tgNotifier.Object
-                    }
-                }
-            };
-
-            var internalConfig = new DhafInternalConfig
-            {
-                DefHeartbeatInterval = 5,
-                Etcd = new DhafInternalConfigEtcd
-                {
-                    DefLeaderKeyTtl = 20,
-                }
-            };
+            var internalConfig = new DhafInternalConfig();
+            _configuration.Bind(internalConfig);
 
             var configParser = new ClusterConfigParser("Data/test_config_1.dhaf", extensionsScope, internalConfig);
             var parsedConfig = await configParser.Parse();
@@ -111,6 +71,78 @@ namespace Dhaf.Core.Tests
             Assert.NotNull(ntf1);
             Assert.Equal("a", ntf1.ExtensionName);
             Assert.Equal("a", ntf1.Name);
+        }
+
+        [Fact]
+        public async Task ParseTest_Issue_25()
+        {
+            var extensionsScope = GetExtensionsScope();
+            var _configuration = GetConfiguration();
+
+            var internalConfig = new DhafInternalConfig();
+            _configuration.Bind(internalConfig);
+
+            var configParser = new ClusterConfigParser("Data/test_config_issue_25.dhaf", extensionsScope, internalConfig);
+            var parsedConfig = await configParser.Parse();
+
+            Assert.NotNull(parsedConfig.Dhaf.WebApi);
+            Assert.Equal("localhost", parsedConfig.Dhaf.WebApi.Host);
+            Assert.Equal(8128, parsedConfig.Dhaf.WebApi.Port);
+        }
+
+        private ExtensionsScope GetExtensionsScope()
+        {
+            var switcher = new Mock<ISwitcher>();
+            switcher.Setup(x => x.ExtensionName).Returns("cloudflare");
+            switcher.Setup(x => x.ConfigType).Returns(typeof(SwitcherConfigMock));
+            switcher.Setup(x => x.InternalConfigType).Returns(typeof(SwitcherInternalConfigMock));
+
+            var healthChecker = new Mock<IHealthChecker>();
+            healthChecker.Setup(x => x.ExtensionName).Returns("web");
+            healthChecker.Setup(x => x.ConfigType).Returns(typeof(HealthCheckerConfigMock));
+            healthChecker.Setup(x => x.InternalConfigType).Returns(typeof(HealthCheckerInternalConfigMock));
+
+            var tgNotifier = new Mock<INotifier>();
+            tgNotifier.Setup(x => x.ExtensionName).Returns("tg");
+            tgNotifier.Setup(x => x.ConfigType).Returns(typeof(NotifierConfigMock));
+            tgNotifier.Setup(x => x.InternalConfigType).Returns(typeof(NotifierInternalConfigMock));
+
+            var extensionsScope = new ExtensionsScope
+            {
+                Switchers = new List<DhafExtension<ISwitcher>>()
+                {
+                    new DhafExtension<ISwitcher>
+                    {
+                        ExtensionPath = "sw/cloudflare", Instance = switcher.Object
+                    }
+                },
+                HealthCheckers = new List<DhafExtension<IHealthChecker>>()
+                {
+                    new DhafExtension<IHealthChecker>
+                    {
+                        ExtensionPath = "hc/web", Instance = healthChecker.Object
+                    }
+                },
+                Notifiers = new List<DhafExtension<INotifier>>()
+                {
+                    new DhafExtension<INotifier>
+                    {
+                        ExtensionPath = "ntf/tg", Instance = tgNotifier.Object
+                    }
+                }
+            };
+
+            return extensionsScope;
+        }
+
+        private IConfigurationRoot GetConfiguration()
+        {
+            // TODO: For performance reasons, it is better to do the configuration reading once before all the tests.
+            // However, flexibility is lost in this way.
+
+            return new ConfigurationBuilder()
+                          .AddJsonFile("appsettings.json")
+                          .Build();
         }
     }
 }

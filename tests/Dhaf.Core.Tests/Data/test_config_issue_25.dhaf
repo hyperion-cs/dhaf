@@ -1,0 +1,14 @@
+dhaf:
+  cluster-name: test-cr
+  node-name: node-1
+
+services:
+  - name: serv1
+    domain: site.com
+    entry-points:
+      - name: nc1
+        ip: 100.1.1.1
+    switcher:
+      type: cloudflare
+    health-checker:
+      type: web

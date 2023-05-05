@@ -41,18 +41,19 @@ namespace Dhaf.HealthCheckers.Web
 
             const int MS_IN_SEC = 1000;
 
-            _client = new RestClient()
+            var restOptions = new RestClientOptions
             {
                 FollowRedirects = _config.FollowRedirects ?? _internalConfig.DefFollowRedirects,
-                Timeout = (_config.Timeout ?? _internalConfig.DefTimeout) * MS_IN_SEC
+                MaxTimeout = (_config.Timeout ?? _internalConfig.DefTimeout) * MS_IN_SEC
             };
 
             var ignoreSslErrors = _config.IgnoreSslErrors ?? _internalConfig.DefIgnoreSslErrors;
             if (ignoreSslErrors)
             {
-                _client.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
+                restOptions.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
             }
 
+            _client = new RestClient(restOptions);
             _requestSchema = PrepareSchema(_config.Schema ?? _internalConfig.HttpSchema);
 
             await ConfigCheck();

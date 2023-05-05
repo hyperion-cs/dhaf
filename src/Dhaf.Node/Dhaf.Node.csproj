@@ -2,22 +2,22 @@
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
-		<TargetFramework>net5</TargetFramework>
+		<TargetFramework>net7.0</TargetFramework>
 		<RuntimeIdentifiers>linux-x64;osx-x64;win-x64</RuntimeIdentifiers>
 		<InvariantGlobalization>true</InvariantGlobalization>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="CommandLineParser" Version="2.8.0" />
-		<PackageReference Include="dotnet-etcd" Version="5.0.2" />
-		<PackageReference Include="EmbedIO" Version="3.4.3" />
-		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="5.0.0" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="5.0.2" />
-		<PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Options" Version="5.0.0" />
-		<PackageReference Include="NLog" Version="4.7.11" />
-		<PackageReference Include="NLog.Extensions.Logging" Version="1.7.4" />
+		<PackageReference Include="CommandLineParser" Version="2.9.1" />
+		<PackageReference Include="dotnet-etcd" Version="6.0.1" />
+		<PackageReference Include="EmbedIO" Version="3.5.2" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Options" Version="7.0.1" />
+		<PackageReference Include="NLog" Version="5.1.4" />
+		<PackageReference Include="NLog.Extensions.Logging" Version="5.2.3" />
 	</ItemGroup>
 
 	<ItemGroup>

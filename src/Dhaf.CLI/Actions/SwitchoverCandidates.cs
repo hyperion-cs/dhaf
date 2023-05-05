@@ -37,7 +37,7 @@ namespace Dhaf.CLI
                 table.AddRow(c.Priority.ToString(), c.Name);
             }
 
-            AnsiConsole.Render(table);
+            AnsiConsole.Write(table);
             return 0;
         }
     }

@@ -341,3 +341,6 @@ ASALocalRun/
 
 #
 templates/dhaf_extensions/libs/*.*
+
+# macOS files
+.DS_Store

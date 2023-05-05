@@ -13,7 +13,7 @@ namespace Dhaf.Node
 {
     public class RestApiFactory
     {
-        protected static async Task SerializationCallback(IHttpContext context, object? data)
+        protected static async Task SerializationCallback(IHttpContext context, object data)
         {
             Validate.NotNull(nameof(context), context).Response.ContentType = MimeType.Json;
             using var text = context.OpenResponseText(new UTF8Encoding(false));
