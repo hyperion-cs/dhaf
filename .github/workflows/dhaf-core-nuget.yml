@@ -14,7 +14,7 @@ jobs:
     - name: setup .net
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 5.0.x
+        dotnet-version: 7.0.x
 
     - name: prepare nuget package
       run: dotnet pack src/Dhaf.Core/Dhaf.Core.csproj --configuration Release -p:NuspecFile=../../nuspecs/Dhaf.Core.nuspec --output nupkgs
