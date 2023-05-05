@@ -1,4 +1,7 @@
+using Castle.Core.Configuration;
+using Microsoft.Extensions.Configuration;
 using Moq;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
@@ -11,16 +14,10 @@ namespace Dhaf.Core.Tests
         public async Task ParseTest()
         {
             var extensionsScope = GetExtensionsScope();
+            var _configuration = GetConfiguration();
 
-            var internalConfig = new DhafInternalConfig
-            {
-                DefHeartbeatInterval = 5,
-                Etcd = new DhafInternalConfigEtcd
-                {
-                    DefLeaderKeyTtl = 20,
-                },
-                NameMaxLength = 64
-            };
+            var internalConfig = new DhafInternalConfig();
+            _configuration.Bind(internalConfig);
 
             var configParser = new ClusterConfigParser("Data/test_config_1.dhaf", extensionsScope, internalConfig);
             var parsedConfig = await configParser.Parse();
@@ -76,6 +73,23 @@ namespace Dhaf.Core.Tests
             Assert.Equal("a", ntf1.Name);
         }
 
+        [Fact]
+        public async Task ParseTest_Issue_25()
+        {
+            var extensionsScope = GetExtensionsScope();
+            var _configuration = GetConfiguration();
+
+            var internalConfig = new DhafInternalConfig();
+            _configuration.Bind(internalConfig);
+
+            var configParser = new ClusterConfigParser("Data/test_config_issue_25.dhaf", extensionsScope, internalConfig);
+            var parsedConfig = await configParser.Parse();
+
+            Assert.NotNull(parsedConfig.Dhaf.WebApi);
+            Assert.Equal("localhost", parsedConfig.Dhaf.WebApi.Host);
+            Assert.Equal(8128, parsedConfig.Dhaf.WebApi.Port);
+        }
+
         private ExtensionsScope GetExtensionsScope()
         {
             var switcher = new Mock<ISwitcher>();
@@ -119,6 +133,16 @@ namespace Dhaf.Core.Tests
             };
 
             return extensionsScope;
+        }
+
+        private IConfigurationRoot GetConfiguration()
+        {
+            // TODO: For performance reasons, it is better to do the configuration reading once before all the tests.
+            // However, flexibility is lost in this way.
+
+            return new ConfigurationBuilder()
+                          .AddJsonFile("appsettings.json")
+                          .Build();
         }
     }
 }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Dhaf.Core;
 using Dhaf.Node;
+using Microsoft.Extensions.Configuration;
 using RestSharp;
 
 namespace Dhaf.CLI
@@ -14,7 +15,12 @@ namespace Dhaf.CLI
     
         private static async Task<ClusterConfig> GetClusterConfig(IConfigPath opt)
         {
-            var clusterConfigParser = new ClusterConfigParser(opt.Config);
+            var _configuration = GetConfiguration();
+
+            var internalConfig = new DhafInternalConfig();
+            _configuration.Bind(internalConfig);
+
+            var clusterConfigParser = new ClusterConfigParser(opt.Config, internalConfig);
             var config = await clusterConfigParser.Parse();
 
             return config;
@@ -34,6 +40,13 @@ namespace Dhaf.CLI
         {
             var error = errors.First();
             Console.WriteLine($"Error {error.Code}: {error.Message}");
+        }
+
+        private static IConfigurationRoot GetConfiguration()
+        {
+            return new ConfigurationBuilder()
+                          .AddJsonFile("appsettings.json")
+                          .Build();
         }
     }
 }
