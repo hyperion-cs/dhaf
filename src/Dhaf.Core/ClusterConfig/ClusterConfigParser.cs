@@ -16,7 +16,7 @@ namespace Dhaf.Core
         public ExtensionsScope ExtensionsScope { get; private set; }
         public DhafInternalConfig InternalConfig { get; private set; }
 
-        public ClusterConfigParser(string path)
+        public ClusterConfigParser(string path, DhafInternalConfig internalConfig)
         {
             Path = path;
         }
@@ -54,8 +54,16 @@ namespace Dhaf.Core
                 .WithTypeConverter(ectc)
                 .Build();
 
+
+            if (!File.Exists(Path))
+            {
+                throw new ConfigParsingException(1418, $"The configuration file in the specified path was not found.\nPath: <{Path}>");
+            }
+
             var configYaml = await File.ReadAllTextAsync(Path, DhafInternalConfig.ConfigsEncoding);
+
             var firstPhase = des.Deserialize<ClusterConfig>(configYaml);
+            firstPhase = SetDefaultValues(firstPhase);
 
             if (ExtensionsScope == null)
             {
@@ -68,12 +76,22 @@ namespace Dhaf.Core
 
             foreach (var service in firstPhase.Services)
             {
+                if (service.Switcher is null)
+                {
+                    throw new ConfigParsingException(1416, $"Switcher for service <{service.Name}> is not specified.");
+                }
+
                 var switcher = ExtensionsScope.Switchers
                     .FirstOrDefault(x => x.Instance.ExtensionName == service.Switcher.ExtensionName);
 
                 if (switcher == null)
                 {
                     throw new ConfigParsingException(1405, $"Switcher <{service.Switcher.ExtensionName}> is not found in any of the extensions.");
+                }
+
+                if (service.HealthChecker is null)
+                {
+                    throw new ConfigParsingException(1417, $"Health checker for service <{service.Name}> is not specified.");
                 }
 
                 var healthChecker = ExtensionsScope.HealthCheckers
@@ -126,9 +144,28 @@ namespace Dhaf.Core
             ectc.Mode = EctcMode.ConvertWithMap;
 
             var secondPhase = des.Deserialize<ClusterConfig>(configYaml);
+            secondPhase = SetDefaultValues(secondPhase);
+
             await ConfigCommonCheck(secondPhase);
 
             return secondPhase;
+        }
+
+        public ClusterConfig SetDefaultValues(ClusterConfig clusterConfig)
+        {
+            if (clusterConfig.Dhaf.WebApi.Host is null)
+            {
+                clusterConfig.Dhaf.WebApi.Host = InternalConfig.WebApi.DefHost;
+            }
+
+            if (clusterConfig.Dhaf.WebApi.Port is null)
+            {
+                clusterConfig.Dhaf.WebApi.Port = InternalConfig.WebApi.DefPort;
+            }
+
+            // TODO: Set the other default values here (and don't do it in Dhaf.Node).
+
+            return clusterConfig;
         }
 
         public async Task ConfigCommonCheck(ClusterConfig config)
@@ -156,41 +193,41 @@ namespace Dhaf.Core
                 throw new ConfigParsingException(1401, "No services were found in the dhaf config. There is no reason for dhaf to work.");
             }
 
-            foreach (var serivce in config.Services)
+            foreach (var service in config.Services)
             {
-                if (!nameRegex.IsMatch(serivce.Name ?? string.Empty))
+                if (!nameRegex.IsMatch(service.Name ?? string.Empty))
                 {
-                    throw new ConfigParsingException(1400, incorrectNameErr("service.name", serivce.Name));
+                    throw new ConfigParsingException(1400, incorrectNameErr("service.name", service.Name));
                 }
 
-                if (string.IsNullOrEmpty(serivce.Domain))
+                if (string.IsNullOrEmpty(service.Domain))
                 {
-                    throw new ConfigParsingException(1403, $"Domain name is not set for the \"{serivce.Name}\" service.");
+                    throw new ConfigParsingException(1403, $"Domain name is not set for the \"{service.Name}\" service.");
                 }
 
-                if (!serivce.EntryPoints.Any())
+                if (!service.EntryPoints.Any())
                 {
-                    throw new ConfigParsingException(1402, $"No entry points were found for the \"{serivce.Name}\" service.");
+                    throw new ConfigParsingException(1402, $"No entry points were found for the \"{service.Name}\" service.");
                 }
 
-                foreach (var entryPoint in serivce.EntryPoints)
+                foreach (var entryPoint in service.EntryPoints)
                 {
                     if (!nameRegex.IsMatch(entryPoint.Id ?? string.Empty))
                     {
                         throw new ConfigParsingException(1400,
-                            incorrectNameErr($"service <{serivce.Name}>.entry-points.name", entryPoint.Id));
+                            incorrectNameErr($"service <{service.Name}>.entry-points.name", entryPoint.Id));
                     }
                 }
 
-                var uniqueNcNamesCount = serivce.EntryPoints
+                var uniqueNcNamesCount = service.EntryPoints
                     .Select(x => x.Id)
                     .Distinct()
                     .Count();
 
-                if (uniqueNcNamesCount != serivce.EntryPoints.Count)
+                if (uniqueNcNamesCount != service.EntryPoints.Count)
                 {
                     throw new ConfigParsingException(1410, $"Not all entry point names " +
-                        $"in service \"{serivce.Name}\" are unique.");
+                        $"in service \"{service.Name}\" are unique.");
                 }
             }
 
