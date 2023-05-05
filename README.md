@@ -3,6 +3,7 @@
 [![linux-x64](https://github.com/hyperion-cs/dhaf/actions/workflows/linux-x64.yml/badge.svg)](https://github.com/hyperion-cs/dhaf/actions/workflows/linux-x64.yml)
 [![win-x64](https://github.com/hyperion-cs/dhaf/actions/workflows/win-x64.yml/badge.svg)](https://github.com/hyperion-cs/dhaf/actions/workflows/win-x64.yml)
 [![macOS-x64](https://github.com/hyperion-cs/dhaf/actions/workflows/osx-x64.yml/badge.svg)](https://github.com/hyperion-cs/dhaf/actions/workflows/osx-x64.yml)
+[![dhaf-core-nuget](https://github.com/hyperion-cs/dhaf/actions/workflows/dhaf-core-nuget.yml/badge.svg)](https://github.com/hyperion-cs/dhaf/actions/workflows/dhaf-core-nuget.yml)
 
 Distributed high availability failover, written in cross-platform C# [.NET](https://github.com/dotnet) (Linux, Windows and macOS supported).
 
