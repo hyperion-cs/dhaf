@@ -14,7 +14,7 @@ jobs:
     - name: setup .net
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 5.0.x
+        dotnet-version: 7.0.x
 
     - name: restore dependencies
       run: dotnet restore src/Dhaf.sln
