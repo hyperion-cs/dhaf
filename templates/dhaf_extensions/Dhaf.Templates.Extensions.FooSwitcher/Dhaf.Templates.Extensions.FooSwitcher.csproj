@@ -1,13 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net5</TargetFramework>
+		<TargetFramework>net7.0</TargetFramework>
 		<RuntimeIdentifiers>linux-x64;osx-x64;win-x64</RuntimeIdentifiers>
 		<InvariantGlobalization>true</InvariantGlobalization>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Dhaf.Core" Version="1.0.16"  PrivateAssets="All"/>
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" PrivateAssets="All" />
+		<PackageReference Include="Dhaf.Core" Version="1.2.2" PrivateAssets="All" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" PrivateAssets="All" />
 	</ItemGroup>
 
 	<ItemGroup>
