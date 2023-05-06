@@ -68,7 +68,7 @@ The following is recommended for stable operation of this solution:
     |d2|112.2.2.2|
     |d3|113.3.3.3|
 3. Install and start etcd on all the dhaf servers (if you have not already done so). See details [here](https://etcd.io/docs/v3.5/quickstart/) and [here](https://etcd.io/docs/v3.5/op-guide/clustering/).
-4. Download and install our [dhaf builds](https://github.com/hyperion-cs/dhaf/releases) or build from sources (requires .NET >= 5.0) on all the dhaf servers;
+4. Download and install our [dhaf builds](https://github.com/hyperion-cs/dhaf/releases) or build from sources (requires .NET >= 7.0) on all the dhaf servers;
 5. Create a Cloudflare account with a free plan (this will be enough). Transfer there DNS management for your domain name `foo.com`. Also note that your domain name must have only one A record in the DNS that has the Clouflare proxying checkbox checked. Otherwise, you will get [round-robin](https://en.wikipedia.org/wiki/Round-robin_DNS) detrimental for our purposes and/or unacceptably slow updating of DNS records for end clients;
     - ⚠️ Warning! To combat scammers, Cloudflare does not allow DNS configuration via the official API for domains with a .cf, .ga, .gq, .ml, or .tk TLD (top-level domain). Thus, it is not possible to work with them in **dhaf** either. However, it is still possible to manually configure them in Cloudflare Dashboard.
 6. Using the Clouflare dashboard, [create](https://dash.cloudflare.com/profile/api-tokens) an API token (if you have not already done so) with access to edit the DNS records of your domain zone. You also need to set an adequate TTL (lifetime) of your token, and keep it up to date.
@@ -293,7 +293,7 @@ Telegram bot prerequisites:
 - It is worth turning on [privacy mode](https://core.telegram.org/bots#privacy-mode) in the settings of the bot.
     
 # Building from sources
-On UNIX-like systems, you can use [this .sh template](/templates/build_example.sh) to build (with this template you can build for any platform). However, please note that you will need the [.NET 5 SDK](https://dotnet.microsoft.com/download/dotnet/5.0) installed.
+On UNIX-like systems, you can use [this .sh template](/templates/build_example.sh) to build (with this template you can build for any platform). However, please note that you will need the [.NET 7 SDK](https://dotnet.microsoft.com/download/dotnet/7.0) installed.
     
 Looking at the above template, it is not difficult to perform a building from sources on platforms such as Windows and/or macOS also.
     
