@@ -4,6 +4,7 @@
 		<TargetFramework>net7.0</TargetFramework>
 		<RuntimeIdentifiers>linux-x64;osx-x64;win-x64</RuntimeIdentifiers>
 		<InvariantGlobalization>true</InvariantGlobalization>
+		<Version>1.2.3</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -24,7 +25,7 @@
 	</ItemGroup>
 
 	<Target Name="CopyExtension" Condition="'$(Configuration)' == 'Debug'" AfterTargets="AfterBuild">
-		<Copy SourceFiles="$(OutDir)\Dhaf.Notifiers.Email.dll;$(OutDir)\Dhaf.Notifiers.Email.deps.json;$(OutDir)\extension.json" DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net5\extensions\notifiers\email" />
+		<Copy SourceFiles="$(OutDir)\Dhaf.Notifiers.Email.dll;$(OutDir)\Dhaf.Notifiers.Email.deps.json;$(OutDir)\extension.json" DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net7.0\extensions\notifiers\email" />
 	</Target>
 
 </Project>

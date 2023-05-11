@@ -4,6 +4,7 @@
 		<TargetFramework>net7.0</TargetFramework>
 		<RuntimeIdentifiers>linux-x64;osx-x64;win-x64</RuntimeIdentifiers>
 		<InvariantGlobalization>true</InvariantGlobalization>
+		<Version>1.2.3</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -20,8 +21,7 @@
 	</ItemGroup>
 
 	<Target Name="CopyExtension" Condition="'$(Configuration)' == 'Debug'" AfterTargets="AfterBuild">
-		<Copy SourceFiles="$(OutDir)\Dhaf.HealthCheckers.Tcp.dll;$(OutDir)\Dhaf.HealthCheckers.Tcp.deps.json;$(OutDir)\extension.json"
-			  DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net5\extensions\health-checkers\tcp" />
+		<Copy SourceFiles="$(OutDir)\Dhaf.HealthCheckers.Tcp.dll;$(OutDir)\Dhaf.HealthCheckers.Tcp.deps.json;$(OutDir)\extension.json" DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net7.0\extensions\health-checkers\tcp" />
 	</Target>
 
 </Project>

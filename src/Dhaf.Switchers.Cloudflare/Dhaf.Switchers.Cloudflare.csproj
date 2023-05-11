@@ -4,6 +4,7 @@
 		<TargetFramework>net7.0</TargetFramework>
 		<RuntimeIdentifiers>linux-x64;osx-x64;win-x64</RuntimeIdentifiers>
 		<InvariantGlobalization>true</InvariantGlobalization>
+		<Version>1.2.3</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -24,7 +25,7 @@
 	</ItemGroup>
 
 	<Target Name="CopyExtension" Condition="'$(Configuration)' == 'Debug'" AfterTargets="AfterBuild">
-		<Copy SourceFiles="$(OutDir)\Dhaf.Switchers.Cloudflare.dll;$(OutDir)\Dhaf.Switchers.Cloudflare.deps.json;$(OutDir)\extension.json" DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net5\extensions\switchers\cloudflare" />
+		<Copy SourceFiles="$(OutDir)\Dhaf.Switchers.Cloudflare.dll;$(OutDir)\Dhaf.Switchers.Cloudflare.deps.json;$(OutDir)\extension.json" DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net7.0\extensions\switchers\cloudflare" />
 	</Target>
 
 </Project>
