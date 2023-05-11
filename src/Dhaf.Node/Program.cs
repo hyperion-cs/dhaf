@@ -29,10 +29,10 @@ namespace Dhaf.Node
             {
                 logger.Fatal($"Config YAML deserialize error:\n{ex.Message}");
             }
-            catch (Exception ex)
+            /*catch (Exception ex)
             {
                 logger.Fatal($"Further work of the node is impossible because of a fatal error:\n{ex.Message}");
-            }
+            }*/
             finally
             {
                 logger.Info("* Dhaf node exit...");
@@ -55,11 +55,6 @@ namespace Dhaf.Node
                         ArgsOptions argsOptions = null;
                         Parser.Default.ParseArguments<ArgsOptions>(args)
                             .WithParsed(p => argsOptions = p);
-
-                        if (argsOptions is null)
-                        {
-                            throw new ArgumentNullException("The command line arguments cannot be null.");
-                        }
 
                         return argsOptions;
                     })

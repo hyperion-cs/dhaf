@@ -6,6 +6,7 @@ using Dhaf.Core;
 using Dhaf.Node;
 using Microsoft.Extensions.Configuration;
 using RestSharp;
+using RestSharp.Serializers.NewtonsoftJson;
 
 namespace Dhaf.CLI
 {
@@ -33,7 +34,7 @@ namespace Dhaf.CLI
             var uri = new Uri($"http://{webApiEndpoint.Host}:{webApiEndpoint.Port}/");
 
             var options = new RestClientOptions { BaseUrl = uri };
-            _restClient = new RestClient(options);
+            _restClient = new RestClient(options, configureSerialization: s => s.UseNewtonsoftJson());
         }
 
         private static void PrintErrors(IEnumerable<RestApiError> errors)

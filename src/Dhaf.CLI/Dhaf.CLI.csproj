@@ -5,6 +5,7 @@
 		<TargetFramework>net7.0</TargetFramework>
 		<RuntimeIdentifiers>linux-x64;osx-x64;win-x64</RuntimeIdentifiers>
 		<InvariantGlobalization>true</InvariantGlobalization>
+		<Version>1.2.3</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -15,6 +16,7 @@
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="7.0.4" />
+		<PackageReference Include="RestSharp.Serializers.NewtonsoftJson" Version="110.2.0" />
 	</ItemGroup>
 
 	<ItemGroup>

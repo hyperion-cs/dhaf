@@ -1,9 +1,10 @@
-﻿using Dhaf.Core;
-using Microsoft.Extensions.Logging;
-using RestSharp;
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Dhaf.Core;
+using Microsoft.Extensions.Logging;
+using RestSharp;
+using RestSharp.Serializers.NewtonsoftJson;
 
 namespace Dhaf.Switchers.Cloudflare
 {
@@ -36,7 +37,13 @@ namespace Dhaf.Switchers.Cloudflare
             _config = (Config)options.Config;
             _internalConfig = (InternalConfig)options.InternalConfig;
 
-            _client = new RestClient(_internalConfig.BaseUrl);
+            var restOptions = new RestClientOptions
+            {
+                BaseUrl = new Uri(_internalConfig.BaseUrl),
+
+            };
+
+            _client = new RestClient(restOptions, configureSerialization: s => s.UseNewtonsoftJson());
 
             await AssertToken();
 
@@ -141,7 +148,7 @@ namespace Dhaf.Switchers.Cloudflare
             request.AddHeader("Authorization", $"Bearer {_config.ApiToken}");
             try
             {
-                var response = await _client.GetAsync<ResultDto<string>>(request);
+                var response = await _client.GetAsync<ResultDto<object>>(request);
                 if (response.Errors.Any())
                 {
                     var error = response.Errors.First();

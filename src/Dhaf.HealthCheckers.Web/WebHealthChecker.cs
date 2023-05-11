@@ -1,13 +1,14 @@
-﻿using Dhaf.Core;
-using Microsoft.Extensions.Logging;
-using RestSharp;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Dhaf.Core;
+using Microsoft.Extensions.Logging;
+using RestSharp;
+using RestSharp.Serializers.NewtonsoftJson;
 
 namespace Dhaf.HealthCheckers.Web
 {
@@ -53,7 +54,7 @@ namespace Dhaf.HealthCheckers.Web
                 restOptions.RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
             }
 
-            _client = new RestClient(restOptions);
+            _client = new RestClient(restOptions, configureSerialization: s => s.UseNewtonsoftJson());
             _requestSchema = PrepareSchema(_config.Schema ?? _internalConfig.HttpSchema);
 
             await ConfigCheck();

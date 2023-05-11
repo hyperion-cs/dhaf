@@ -4,11 +4,14 @@
 		<TargetFramework>net7.0</TargetFramework>
 		<RuntimeIdentifiers>linux-x64;osx-x64;win-x64</RuntimeIdentifiers>
 		<InvariantGlobalization>true</InvariantGlobalization>
+		<Version>1.2.3</Version>
+		<CopyLocalLockFileAssemblies Condition="'$(Configuration)' == 'Debug'">true</CopyLocalLockFileAssemblies>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.Options" Version="7.0.1" />
 		<PackageReference Include="RestSharp" Version="110.2.0" />
+		<PackageReference Include="RestSharp.Serializers.NewtonsoftJson" Version="110.2.0" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -25,7 +28,10 @@
 	</ItemGroup>
 
 	<Target Name="CopyExtension" Condition="'$(Configuration)' == 'Debug'" AfterTargets="AfterBuild">
-		<Copy SourceFiles="$(OutDir)\Dhaf.HealthCheckers.Web.dll;$(OutDir)\Dhaf.HealthCheckers.Web.deps.json;$(OutDir)\extension.json" DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net5\extensions\health-checkers\web" />
+		<ItemGroup>
+			<ExtOutputFiles Include="$(OutDir)\**\*.*" />
+	    </ItemGroup>
+	    <Copy SourceFiles="@(ExtOutputFiles)" DestinationFolder="$(SolutionDir)\Dhaf.Node\bin\Debug\net7.0\extensions\health-checkers\web" />
 	</Target>
 
 </Project>
