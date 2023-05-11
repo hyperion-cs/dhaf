@@ -56,11 +56,6 @@ namespace Dhaf.Node
                         Parser.Default.ParseArguments<ArgsOptions>(args)
                             .WithParsed(p => argsOptions = p);
 
-                        if (argsOptions is null)
-                        {
-                            throw new ArgumentNullException("The command line arguments cannot be null.");
-                        }
-
                         return argsOptions;
                     })
                     .AddHostedService<Startup>()

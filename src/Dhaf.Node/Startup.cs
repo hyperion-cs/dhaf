@@ -19,20 +19,29 @@ namespace Dhaf.Node
         private readonly IServiceProvider _servicesProvider;
         private readonly IConfiguration _configuration;
         private readonly ArgsOptions _argsOptions;
+        private readonly IHostApplicationLifetime _host;
 
         public Startup(ILogger<IDhafNode> dhafNodeLogger,
             IServiceProvider servicesProvider,
             IConfiguration configuration,
-            ArgsOptions argsOptions)
+            ArgsOptions argsOptions,
+            IHostApplicationLifetime host)
         {
             _dhafNodeLogger = dhafNodeLogger;
             _servicesProvider = servicesProvider;
             _configuration = configuration;
             _argsOptions = argsOptions;
+            _host = host;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
+            if(_argsOptions is null || _argsOptions.ConfigPath is null)
+            {
+                _host.StopApplication();
+                return;
+            }
+
             var dhafInternalConfig = new DhafInternalConfig();
             _configuration.Bind(dhafInternalConfig);
 
