@@ -188,14 +188,17 @@ Need another extension? Leave a [feature request](https://github.com/hyperion-cs
 | `services[].entry-points[].name` | string | The name of the entry point. |
 | `services[].entry-points[].ip` | string | The IP address of the entry point \<name\>. |
 | `services[].switcher` | object | Switcher for service \<name\>. |
-| `services[].switcher.type` | object | Name (provider type) of switcher for service \<name\>. |
+| `services[].switcher.type` | string | Name (provider type) of switcher for service \<name\>. |
 | `services[].health-checker` | object | Health checker for service \<name\>. |
-| `services[].health-checker.type` | object | Name (provider type) of health checker for service \<name\>. |
+| `services[].health-checker.type` | string | Name (provider type) of health checker for service \<name\>. |
    
 ### Optional
 
 |Parameter name|Type|Description|Default|
 | - | :-: | - | :-: |
+| `notifiers` | list | List of notifiers. | — |
+| `notifiers[].type` | string | The provider type of the notifier of the current dhaf cluster. | — |
+| `notifiers[].name` | string | The name of the notifier of the current dhaf cluster. | Depends on type |
 | `dhaf.healthy-node-status-ttl` | string | For how long the dhaf node is considered healthy after the last heartbeat. | `30` |
 | `dhaf.heartbeat-interval` | string | Frequency of sending heartbeat of node dhaf to distributed storage (dcs). | `5` |
 | `dhaf.tact-interval` | string | How often the dhaf should perform checks (in seconds). It is counted after the completion of the last check. Must be in the range 1-3600 seconds. | `10` |
@@ -264,7 +267,7 @@ Tcp health check provider (`tcp`):
 | `receiveTimeout` | int | Timeout (in seconds) for data receiving. Must be in the range 1-86400 seconds. | `5` |
     
 ### Configurations for notifier providers
-⚠️ Pay attention! There can be several of them in one cluster. However, they will be the same for all services.
+⚠️ Pay attention! There can be several of them in one cluster. However, they will be the same for all services. Thus, they are configured in the main part of the configuration file.
 
 E-Mail notifier provider (`email`):
 
@@ -291,7 +294,20 @@ Telegram messenger notifier provider (`tg`):
 Telegram bot prerequisites:
 - All you have to do is create a bot via @BotFather (more details [here](https://core.telegram.org/bots#3-how-do-i-create-a-bot)) and write the API key in the config. Everything else is taken care of by the `tg` provider (in other words, the `tg` provider acts as a server for the bot). It does NOT require incoming connections because it uses [long polling](https://en.wikipedia.org/wiki/Push_technology#Long_polling);
 - It is worth turning on [privacy mode](https://core.telegram.org/bots#privacy-mode) in the settings of the bot.
-    
+
+An example of how to configure the notifier:
+```yaml
+...
+
+notifiers:
+  - type: tg
+    name: dhaf-tg-ntf-01
+    token: 1111111111:AaaAAaaAAaaAAaaAAaaAAaaAAaaAAaaAAaa
+    join-code: my_secret_code_123
+
+...
+```
+
 # Building from sources
 On UNIX-like systems, you can use [this .sh template](/templates/build_example.sh) to build (with this template you can build for any platform). However, please note that you will need the [.NET 7 SDK](https://dotnet.microsoft.com/download/dotnet/7.0) installed.
     
