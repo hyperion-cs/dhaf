@@ -98,7 +98,7 @@ namespace Dhaf.HealthCheckers.Web
             var retrying = RETRYING_INIT_VALUE;
             while (++retrying <= retries)
             {
-                var method = Enum.Parse<Method>(_config.Method ?? _internalConfig.DefMethod);
+                var method = Enum.Parse<Method>(_config.Method ?? _internalConfig.DefMethod, true);
                 var response = await _client.ExecuteAsync(request, method);
 
                 if (response.ErrorException is not null)
@@ -194,6 +194,11 @@ namespace Dhaf.HealthCheckers.Web
                 {
                     throw new ConfigParsingException(1802, $"{Sign} Incorrect URI scheme is specified (only http/https allowed).");
                 }
+            }
+
+            if (_config.Method is not null && !Enum.TryParse<Method>(_config.Method, true, out Method _))
+            {
+                throw new ConfigParsingException(1804, $"{Sign} Incorrect HTTP method is specified (only GET/POST allowed).");
             }
 
             if (_config.Timeout is not null
