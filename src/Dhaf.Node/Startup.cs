@@ -133,6 +133,7 @@ namespace Dhaf.Node
 
             await Task.WhenAll(extInitorTasks);
 
+            _dhafNodeLogger.LogTrace("Initializing notifiers...");
             var notifierTemplates = extensionsScope.Notifiers;
             var notifiers = new List<INotifier>();
 

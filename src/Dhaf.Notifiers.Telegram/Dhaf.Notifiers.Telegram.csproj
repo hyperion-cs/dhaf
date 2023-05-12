@@ -9,7 +9,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Telegram.Bot" Version="18.0.0" />
+		<PackageReference Include="Telegram.Bot" Version="19.0.0" />
 		<PackageReference Include="Telegram.Bot.Extensions.Polling" Version="0.2.0" />
 		<PackageReference Include="Telegram.Bots.Extensions.Polling" Version="5.9.0" />
 	</ItemGroup>
