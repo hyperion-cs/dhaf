@@ -19,6 +19,7 @@ namespace Dhaf.Core
         public ClusterConfigParser(string path, DhafInternalConfig internalConfig)
         {
             Path = path;
+            InternalConfig = internalConfig;
         }
 
         public ClusterConfigParser(string path, ExtensionsScope extensionsScope, DhafInternalConfig internalConfig)
