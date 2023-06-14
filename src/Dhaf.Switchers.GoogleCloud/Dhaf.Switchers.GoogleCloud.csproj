@@ -4,12 +4,12 @@
 		<TargetFramework>net7.0</TargetFramework>
 		<RuntimeIdentifiers>linux-x64;osx-x64;win-x64</RuntimeIdentifiers>
 		<InvariantGlobalization>true</InvariantGlobalization>
-		<Version>1.2.3</Version>
+		<Version>1.2.4</Version>
 		<CopyLocalLockFileAssemblies Condition="'$(Configuration)' == 'Debug'">true</CopyLocalLockFileAssemblies>
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="Google.Apis.Compute.v1" Version="1.60.0.3036" />
+	  <PackageReference Include="Google.Apis.Compute.v1" Version="1.60.0.3071" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
 	<metadata>
 		<id>Dhaf.Core</id>
-		<version>1.2.3</version>
+		<version>1.2.4</version>
 		<description>The core package for developing dhaf extensions.</description>
 		<authors>Petr Osetrov</authors>
 		<tags>dhaf core extension cluster high availability fault tolerance</tags>

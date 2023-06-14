@@ -4,13 +4,12 @@
 		<TargetFramework>net7.0</TargetFramework>
 		<RuntimeIdentifiers>linux-x64;osx-x64;win-x64</RuntimeIdentifiers>
 		<InvariantGlobalization>true</InvariantGlobalization>
-		<Version>1.2.3</Version>
+		<Version>1.2.4</Version>
 		<CopyLocalLockFileAssemblies Condition="'$(Configuration)' == 'Debug'">true</CopyLocalLockFileAssemblies>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Telegram.Bot" Version="18.0.0" />
-		<PackageReference Include="Telegram.Bot.Extensions.Polling" Version="0.2.0" />
+		<PackageReference Include="Telegram.Bot" Version="19.0.0" />
 		<PackageReference Include="Telegram.Bots.Extensions.Polling" Version="5.9.0" />
 	</ItemGroup>
 

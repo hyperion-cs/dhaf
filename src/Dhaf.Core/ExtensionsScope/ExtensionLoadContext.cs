@@ -15,6 +15,13 @@ namespace Dhaf.Core
 
         protected override Assembly Load(AssemblyName assemblyName)
         {
+            // Workaround the bug described here:
+            // https://github.com/dotnet/runtime/issues/87578
+            if (assemblyName.Name == "Microsoft.Extensions.Logging.Abstractions")
+            {
+                return null;
+            }
+
             var assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
             if (assemblyPath != null)
             {
