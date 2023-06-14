@@ -9,7 +9,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="Google.Apis.Compute.v1" Version="1.60.0.3036" />
+	  <PackageReference Include="Google.Apis.Compute.v1" Version="1.60.0.3071" />
 	</ItemGroup>
 
 	<ItemGroup>
