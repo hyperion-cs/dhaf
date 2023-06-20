@@ -15,17 +15,24 @@ namespace Dhaf.Core
 
         protected override Assembly Load(AssemblyName assemblyName)
         {
-            // Workaround the bug described here:
+            // See more about this check here:
             // https://github.com/dotnet/runtime/issues/87578
-            if (assemblyName.Name == "Microsoft.Extensions.Logging.Abstractions")
+            try
             {
-                return null;
+                var asm = AssemblyLoadContext.Default.LoadFromAssemblyName(assemblyName);
+                if (asm != null)
+                {
+                    return asm;
+                }
             }
-
-            var assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
-            if (assemblyPath != null)
+            catch
             {
-                return LoadFromAssemblyPath(assemblyPath);
+                // Assembly is not part of the host - load it into the plugin.
+                var assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
+                if (assemblyPath != null)
+                {
+                    return LoadFromAssemblyPath(assemblyPath);
+                }
             }
 
             return null;
