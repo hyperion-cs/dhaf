@@ -1,8 +1,9 @@
-![project_identity](https://raw.githubusercontent.com/hyperion-cs/dhaf/main/project_identity/github.png)
+![project_identity](project_identity/github.png)
 # Dhaf
 [![linux-x64](https://github.com/hyperion-cs/dhaf/actions/workflows/linux-x64.yml/badge.svg)](https://github.com/hyperion-cs/dhaf/actions/workflows/linux-x64.yml)
 [![win-x64](https://github.com/hyperion-cs/dhaf/actions/workflows/win-x64.yml/badge.svg)](https://github.com/hyperion-cs/dhaf/actions/workflows/win-x64.yml)
 [![macOS-x64](https://github.com/hyperion-cs/dhaf/actions/workflows/osx-x64.yml/badge.svg)](https://github.com/hyperion-cs/dhaf/actions/workflows/osx-x64.yml)
+[![dhaf-core-nuget](https://github.com/hyperion-cs/dhaf/actions/workflows/dhaf-core-nuget.yml/badge.svg)](https://github.com/hyperion-cs/dhaf/actions/workflows/dhaf-core-nuget.yml)
 
 Distributed high availability failover, written in cross-platform C# [.NET](https://github.com/dotnet) (Linux, Windows and macOS supported).
 
@@ -49,7 +50,7 @@ The following is recommended for stable operation of this solution:
 2. Three dhaf servers in independent datacenters. These can be the **cheapest** virtual servers (including cloud servers), because the load on them is minimal. The following should be installed on them:
     - **dhaf** (current project);
     - **[etcd](https://github.com/etcd-io/etcd)** >= v3.5 as DCS (Distributed Configuration Store);
-    -  .NET Runtime >= 5.0 (download [here](https://dotnet.microsoft.com/download/dotnet/5.0/runtime)).
+    -  .NET Runtime >= 7.0 (download [here](https://dotnet.microsoft.com/download/dotnet/7.0/runtime)).
 
 # Quick Start
 ### With Cloudflare switcher provider
@@ -67,7 +68,7 @@ The following is recommended for stable operation of this solution:
     |d2|112.2.2.2|
     |d3|113.3.3.3|
 3. Install and start etcd on all the dhaf servers (if you have not already done so). See details [here](https://etcd.io/docs/v3.5/quickstart/) and [here](https://etcd.io/docs/v3.5/op-guide/clustering/).
-4. Download and install our [dhaf builds](https://github.com/hyperion-cs/dhaf/releases) or build from sources (requires .NET >= 5.0) on all the dhaf servers;
+4. Download and install our [dhaf builds](https://github.com/hyperion-cs/dhaf/releases) or build from sources (requires .NET >= 7.0) on all the dhaf servers;
 5. Create a Cloudflare account with a free plan (this will be enough). Transfer there DNS management for your domain name `foo.com`. Also note that your domain name must have only one A record in the DNS that has the Clouflare proxying checkbox checked. Otherwise, you will get [round-robin](https://en.wikipedia.org/wiki/Round-robin_DNS) detrimental for our purposes and/or unacceptably slow updating of DNS records for end clients;
     - ⚠️ Warning! To combat scammers, Cloudflare does not allow DNS configuration via the official API for domains with a .cf, .ga, .gq, .ml, or .tk TLD (top-level domain). Thus, it is not possible to work with them in **dhaf** either. However, it is still possible to manually configure them in Cloudflare Dashboard.
 6. Using the Clouflare dashboard, [create](https://dash.cloudflare.com/profile/api-tokens) an API token (if you have not already done so) with access to edit the DNS records of your domain zone. You also need to set an adequate TTL (lifetime) of your token, and keep it up to date.
@@ -165,6 +166,7 @@ Similar functionality to the CLI (because the CLI uses the REST API). Detailed d
 | switcher | exec | Switching entry points via an executable file (e.g. a Python script). |
 | health checker | web | Checks the health of the http(s) service. |
 | health checker | exec | Checks the health of service via an executable file (e.g. a Python script). |
+| health checker | tcp | Tcp health checker. |
 | notifier | email | Email notifications from dhaf. |
 | notifier | tg | Telegram messenger notifications from dhaf. |
 
@@ -186,14 +188,17 @@ Need another extension? Leave a [feature request](https://github.com/hyperion-cs
 | `services[].entry-points[].name` | string | The name of the entry point. |
 | `services[].entry-points[].ip` | string | The IP address of the entry point \<name\>. |
 | `services[].switcher` | object | Switcher for service \<name\>. |
-| `services[].switcher.type` | object | Name (provider type) of switcher for service \<name\>. |
+| `services[].switcher.type` | string | Name (provider type) of switcher for service \<name\>. |
 | `services[].health-checker` | object | Health checker for service \<name\>. |
-| `services[].health-checker.type` | object | Name (provider type) of health checker for service \<name\>. |
+| `services[].health-checker.type` | string | Name (provider type) of health checker for service \<name\>. |
    
 ### Optional
 
 |Parameter name|Type|Description|Default|
 | - | :-: | - | :-: |
+| `notifiers` | list | List of notifiers. | — |
+| `notifiers[].type` | string | The provider type of the notifier of the current dhaf cluster. | — |
+| `notifiers[].name` | string | The name of the notifier of the current dhaf cluster. | Depends on type |
 | `dhaf.healthy-node-status-ttl` | string | For how long the dhaf node is considered healthy after the last heartbeat. | `30` |
 | `dhaf.heartbeat-interval` | string | Frequency of sending heartbeat of node dhaf to distributed storage (dcs). | `5` |
 | `dhaf.tact-interval` | string | How often the dhaf should perform checks (in seconds). It is counted after the completion of the last check. Must be in the range 1-3600 seconds. | `10` |
@@ -253,9 +258,16 @@ Exec health check provider (`exec`):
 | - | :-: | - | :-: |
 | `init` | string | Path to the executable file for provider initialization. | Required |
 | `check` | string | Path to the executable file to health check. The command line arguments for health check will be passed: [entry point name, entry point ip]. Should return exit code 0 if the entry point is considered healthy. | Required |
+
+Tcp health check provider (`tcp`):
+
+|Parameter name|Type|Description|Default|
+| - | :-: | - | :-: |
+| `port` | int | Port for TCP connection. | Required |
+| `receiveTimeout` | int | Timeout (in seconds) for data receiving. Must be in the range 1-86400 seconds. | `5` |
     
 ### Configurations for notifier providers
-⚠️ Pay attention! There can be several of them in one cluster. However, they will be the same for all services.
+⚠️ Pay attention! There can be several of them in one cluster. However, they will be the same for all services. Thus, they are configured in the main part of the configuration file.
 
 E-Mail notifier provider (`email`):
 
@@ -282,9 +294,22 @@ Telegram messenger notifier provider (`tg`):
 Telegram bot prerequisites:
 - All you have to do is create a bot via @BotFather (more details [here](https://core.telegram.org/bots#3-how-do-i-create-a-bot)) and write the API key in the config. Everything else is taken care of by the `tg` provider (in other words, the `tg` provider acts as a server for the bot). It does NOT require incoming connections because it uses [long polling](https://en.wikipedia.org/wiki/Push_technology#Long_polling);
 - It is worth turning on [privacy mode](https://core.telegram.org/bots#privacy-mode) in the settings of the bot.
-    
+
+An example of how to configure the notifier:
+```yaml
+...
+
+notifiers:
+  - type: tg
+    name: dhaf-tg-ntf-01
+    token: 1111111111:AaaAAaaAAaaAAaaAAaaAAaaAAaaAAaaAAaa
+    join-code: my_secret_code_123
+
+...
+```
+
 # Building from sources
-On UNIX-like systems, you can use [this .sh template](/templates/build_example.sh) to build (with this template you can build for any platform). However, please note that you will need the [.NET 5 SDK](https://dotnet.microsoft.com/download/dotnet/5.0) installed.
+On UNIX-like systems, you can use [this .sh template](/templates/build_example.sh) to build (with this template you can build for any platform). However, please note that you will need the [.NET 7 SDK](https://dotnet.microsoft.com/download/dotnet/7.0) installed.
     
 Looking at the above template, it is not difficult to perform a building from sources on platforms such as Windows and/or macOS also.
     
@@ -324,4 +349,3 @@ You can run (e.g., to manually test the extension) directly using `Dhaf.Node`. Y
 - Failover — emergency switching of the entry point in automatic mode;
 - Switchover — knowingly manually switching entry points (for maintenance, testing, etc.);
 - Switching — automatically switching of the entry point to the higher priority of the healthy ones.
-    

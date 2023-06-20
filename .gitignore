@@ -1,0 +1,10 @@
+
+# Exclude all project files
+/*
+/*/
+
+# Include gh-pages files
+
+!.gitignore
+!_config.yml
+!index.md
