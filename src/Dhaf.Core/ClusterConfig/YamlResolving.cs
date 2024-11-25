@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -97,7 +98,7 @@ namespace Dhaf.Core
             _deserializer = deserializer;
         }
 
-        public object ReadYaml(YamlDotNet.Core.IParser parser, Type type)
+        public object ReadYaml(IParser parser, Type type, ObjectDeserializer rootDeserializer)
         {
             var offset = parser.Current.Start.Index;
             var typeInterfaces = type.GetInterfaces();
@@ -126,7 +127,7 @@ namespace Dhaf.Core
                 var yamlMark = new ExtensionConfigYamlMark
                 {
                     ExtensionName = ((IExtensionConfig)obj).ExtensionName,
-                    AbsoluteOffset = offset,
+                    AbsoluteOffset = (int)offset,
                     InterfaceType = configTypeInterface
                 };
 
@@ -136,9 +137,9 @@ namespace Dhaf.Core
             return obj;
         }
 
-        public void WriteYaml(YamlDotNet.Core.IEmitter emitter, object value, Type type)
+        public void WriteYaml(IEmitter emitter, object value, Type type, ObjectSerializer serializer)
         {
-            throw new NotSupportedException();
+            throw new NotImplementedException();
         }
     }
 }

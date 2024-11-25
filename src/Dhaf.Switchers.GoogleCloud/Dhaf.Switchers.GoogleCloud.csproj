@@ -1,15 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net7.0</TargetFramework>
+		<TargetFramework>net9.0</TargetFramework>
 		<RuntimeIdentifiers>linux-x64;osx-x64;win-x64</RuntimeIdentifiers>
 		<InvariantGlobalization>true</InvariantGlobalization>
-		<Version>1.2.4</Version>
+		<Version>1.2.5</Version>
 		<CopyLocalLockFileAssemblies Condition="'$(Configuration)' == 'Debug'">true</CopyLocalLockFileAssemblies>
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="Google.Apis.Compute.v1" Version="1.60.0.3071" />
+	  <PackageReference Include="Google.Apis.Compute.v1" Version="1.68.0.3596" />
 	</ItemGroup>
 
 	<ItemGroup>
