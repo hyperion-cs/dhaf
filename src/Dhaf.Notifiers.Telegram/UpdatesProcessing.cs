@@ -36,7 +36,7 @@ namespace Dhaf.Notifiers.Telegram
         {
             foreach (var update in updates)
             {
-                if (update.Message.Type == MessageType.ChatMemberLeft)
+                if (update.Message.Type == MessageType.LeftChatMember)
                 {
                     if (update.Message.LeftChatMember.Id == _botClient.BotId)
                     {
