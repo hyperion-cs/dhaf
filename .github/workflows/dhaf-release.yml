@@ -12,21 +12,21 @@ jobs:
 
     steps:
     - name: download linux-x64 artifacts
-      uses: dawidd6/action-download-artifact@v2
+      uses: dawidd6/action-download-artifact@v6
       with:
         workflow: linux-x64.yml
         workflow_conclusion: success
         path: linux-x64
 
     - name: download win-x64 artifacts
-      uses: dawidd6/action-download-artifact@v2
+      uses: dawidd6/action-download-artifact@v6
       with:
         workflow: win-x64.yml
         workflow_conclusion: success
         path: win-x64
 
     - name: download osx-x64 artifacts
-      uses: dawidd6/action-download-artifact@v2
+      uses: dawidd6/action-download-artifact@v6
       with:
         workflow: osx-x64.yml
         workflow_conclusion: success
